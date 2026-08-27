@@ -8,7 +8,9 @@ from typing import Any
 import requests
 
 
-EZTV_API_URL = "https://eztvx.to/api/get-torrents"
+EZTV_API_URL = "https://eztv.wf/api/get-torrents"
+EZTV_FALLBACK_API_URL = "https://eztv.tf/api/get-torrents"
+EZTV_API_URLS = (EZTV_API_URL, EZTV_FALLBACK_API_URL)
 REQUEST_TIMEOUT = 20
 DEFAULT_LIMIT = 100
 
@@ -104,20 +106,20 @@ def _title_matches(title: str, show_name: str, episode_code: str) -> bool:
     )
 
 
-def _fetch_page(imdb_id: str, page: int) -> dict[str, Any]:
+def _fetch_page(endpoint: str, imdb_id: str, page: int) -> dict[str, Any]:
     try:
         response = requests.get(
-            EZTV_API_URL,
+            endpoint,
             params={"imdb_id": imdb_id, "limit": DEFAULT_LIMIT, "page": page},
             timeout=REQUEST_TIMEOUT,
         )
-        response.raise_for_status()
     except requests.Timeout as error:
         raise EZTVError("EZTV request timed out") from error
-    except requests.HTTPError as error:
-        raise EZTVError(f"EZTV returned HTTP {response.status_code}") from error
     except requests.RequestException as error:
         raise EZTVError("EZTV request failed") from error
+
+    if response.status_code != 200:
+        raise EZTVError(f"EZTV returned HTTP {response.status_code}")
 
     try:
         payload = response.json()
@@ -131,29 +133,27 @@ def _fetch_page(imdb_id: str, page: int) -> dict[str, Any]:
     return payload
 
 
-def check_episode(
+def _check_endpoint(
+    endpoint: str,
     show_name: str,
     episode_code: str,
-    imdb_id: str | int | None,
+    normalized_imdb_id: str,
+    season: int,
+    episode: int,
 ) -> str | None:
-    """Return one exact EZTV title, or ``None`` when it is not available."""
-    if not _normalize_name(show_name):
-        raise ValueError("show name must not be empty")
-    season, episode = _episode_numbers(episode_code)
-    normalized_imdb_id = _normalize_imdb_id(imdb_id)
-
     page = 1
     while True:
-        payload = _fetch_page(normalized_imdb_id, page)
+        payload = _fetch_page(endpoint, normalized_imdb_id, page)
 
         response_imdb_id = payload.get("imdb_id")
         if response_imdb_id is None:
             return None
         try:
-            if _normalize_imdb_id(response_imdb_id) != normalized_imdb_id:
-                raise EZTVError("EZTV returned a different IMDb ID than requested")
+            response_imdb_id = _normalize_imdb_id(response_imdb_id)
         except ValueError as error:
             raise EZTVError("EZTV returned an invalid IMDb ID") from error
+        if response_imdb_id != normalized_imdb_id:
+            raise EZTVError("EZTV returned a different IMDb ID than requested")
 
         torrents = payload["torrents"]
         for torrent in torrents:
@@ -176,3 +176,32 @@ def check_episode(
         if not torrents or total is None or page * DEFAULT_LIMIT >= total:
             return None
         page += 1
+
+
+def check_episode(
+    show_name: str,
+    episode_code: str,
+    imdb_id: str | int | None,
+) -> str | None:
+    """Return one exact EZTV title, or ``None`` when it is not available."""
+    if not _normalize_name(show_name):
+        raise ValueError("show name must not be empty")
+    season, episode = _episode_numbers(episode_code)
+    normalized_imdb_id = _normalize_imdb_id(imdb_id)
+
+    last_error: EZTVError | None = None
+    for endpoint in EZTV_API_URLS:
+        try:
+            return _check_endpoint(
+                endpoint,
+                show_name,
+                episode_code,
+                normalized_imdb_id,
+                season,
+                episode,
+            )
+        except EZTVError as error:
+            last_error = error
+
+    assert last_error is not None
+    raise EZTVError(f"all EZTV mirrors failed: {last_error}") from last_error

@@ -48,7 +48,106 @@ class EZTVTests(unittest.TestCase):
             result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
 
         self.assertEqual(result, expected)
+        self.assertEqual(get.call_count, 1)
+        self.assertEqual(get.call_args.args[0], check_eztv.EZTV_API_URL)
         self.assertEqual(get.call_args.kwargs["params"]["imdb_id"], "27543562")
+
+    def test_primary_403_uses_fallback(self) -> None:
+        expected = "The Shards S01E06 1080p WEB-DL EZTV"
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[
+                FakeResponse(status_code=403),
+                response_for(torrent(expected)),
+            ],
+        ) as get:
+            result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(
+            [call.args[0] for call in get.call_args_list],
+            [check_eztv.EZTV_API_URL, check_eztv.EZTV_FALLBACK_API_URL],
+        )
+
+    def test_primary_timeout_uses_fallback(self) -> None:
+        expected = "The Shards S01E06 720p WEB-DL EZTV"
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[requests.Timeout("primary timed out"), response_for(torrent(expected))],
+        ) as get:
+            result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(get.call_args_list[1].args[0], check_eztv.EZTV_FALLBACK_API_URL)
+
+    def test_primary_invalid_json_uses_fallback(self) -> None:
+        expected = "The Shards S01E06 480p WEB-DL EZTV"
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[
+                FakeResponse(json_error=ValueError("not JSON")),
+                response_for(torrent(expected)),
+            ],
+        ) as get:
+            result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(get.call_args_list[1].args[0], check_eztv.EZTV_FALLBACK_API_URL)
+
+    def test_primary_connection_failure_uses_fallback(self) -> None:
+        expected = "The Shards S01E06 1080p WEB-DL EZTV"
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[requests.ConnectionError("primary unavailable"), response_for(torrent(expected))],
+        ) as get:
+            result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(get.call_args_list[1].args[0], check_eztv.EZTV_FALLBACK_API_URL)
+
+    def test_primary_invalid_structure_uses_fallback(self) -> None:
+        expected = "The Shards S01E06 1080p WEB-DL EZTV"
+        invalid_payload = {"imdb_id": "27543562", "torrents": {}}
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[FakeResponse(payload=invalid_payload), response_for(torrent(expected))],
+        ) as get:
+            result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(get.call_args_list[1].args[0], check_eztv.EZTV_FALLBACK_API_URL)
+
+    def test_both_mirrors_fail(self) -> None:
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[FakeResponse(status_code=403), FakeResponse(status_code=500)],
+        ) as get:
+            with self.assertRaisesRegex(check_eztv.EZTVError, "all EZTV mirrors failed"):
+                check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertEqual(get.call_count, 2)
+
+    def test_primary_valid_without_episode_does_not_use_fallback(self) -> None:
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            return_value=response_for(torrent("The Shards S01E05 1080p EZTV", episode=5)),
+        ) as get:
+            result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
+
+        self.assertIsNone(result)
+        self.assertEqual(get.call_count, 1)
+        self.assertEqual(get.call_args.args[0], check_eztv.EZTV_API_URL)
 
     def test_nonexistent_episode_returns_none(self) -> None:
         with patch.object(

@@ -67,3 +67,26 @@
 - Commits creados: pendiente de crear en esta fase.
 - Runs de GitHub Actions verificados: pendiente de integración; no se usó `gh workflow run`.
 - Problemas encontrados y resolución: ninguno bloqueante. El paquete de instrucciones no rastreado se conserva fuera de los commits del producto.
+
+## Fase 6 — integración, push y validación real
+
+- Fecha/hora UTC: 2026-08-27T05:31:30Z
+- Objetivo: integrar solo tras suite verde y validar dos ejecuciones naturales posteriores al merge.
+- Rama y commits: `feature/multi-show-config` se publicó sin force-push; merge normal a `main` en `ce856c7`.
+- Archivos verificados antes del merge: `shows.json` con The Shards `68193` temporada `1` y Ted Lasso `44458` temporada `4`, ambos habilitados; `state.json` con The Shards `S01E06=true` y `S01E07=true`.
+- Tests y resultados: suite completa verde con `57` tests en Python `3.14.6`; `git diff --check` y escaneo de secretos pasaron.
+- Run natural 1: ID `33042426091`, creado `2026-08-27T05:25:04Z`, SHA `ce856c7`, `success`. TVMaze/EZTV no reportaron error; The Shards omitió S01E06/S01E07 como ya notificadas; Ted Lasso fue procesada sin episodio activo reportado; Telegram no envió mensaje; `state.json` sin cambios.
+- Run natural 2: ID `33042687302`, creado `2026-08-27T05:30:07Z`, SHA `ce856c7`, `success`. Repitió la deduplicación de The Shards; sin Telegram nuevo, sin cambio de `state.json` ni commit automático.
+- Runs anteriores al merge: no se contaron para el criterio, aunque también fueron exitosos sobre el SHA baseline.
+- Problemas encontrados y resolución: no hubo commits automáticos de estado ni conflictos; `origin/main` permaneció en `ce856c7` después de ambos runs.
+
+## Fase 7 — diseño futuro de control Telegram (no implementado)
+
+- Fecha/hora UTC: 2026-08-27T05:31:30Z
+- Objetivo: documentar un camino futuro para `/list`, `/add`, `/disable`, `/enable` y opcionalmente `/remove` sin introducir complejidad en producción ahora.
+- Archivo creado: `FUTURE_TELEGRAM_CONTROL.md`.
+- Decisiones técnicas: recomendar bot/controlador separado del notifier, autorización exacta por `TELEGRAM_CHAT_ID`, parsing seguro, escritura atómica, coordinación con commits de `state.json` y workflow parametrizado; se desaconseja polling permanente dentro de GitHub Actions.
+- Implementación deliberadamente omitida: no hay listener, webhook, polling ni comandos Telegram.
+- Tests y resultados: la suite existente permanece verde; no se hicieron llamadas Telegram de prueba.
+- Commits creados: pendiente de crear en esta fase.
+- Runs de GitHub Actions verificados: los dos runs naturales de fase 6 ya fueron validados; esta fase no cambia runtime.

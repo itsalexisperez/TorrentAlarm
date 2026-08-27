@@ -16,7 +16,8 @@ from tvmaze import Episode, TVMazeError, fetch_episodes, fetch_imdb_id
 
 SERIES_NAME = "The Shards"
 SHOW_ID = 68193
-ACTIVE_WINDOW = timedelta(hours=3)
+ACTIVE_WINDOW_HOURS = 12
+ACTIVE_WINDOW = timedelta(hours=ACTIVE_WINDOW_HOURS)
 STATE_FILE = Path(__file__).with_name("state.json")
 
 
@@ -44,7 +45,7 @@ def parse_now(value: str | None) -> datetime:
 
 
 def is_active(episode: Episode, now: datetime) -> bool:
-    """Return whether an episode is within its three-hour premiere window."""
+    """Return whether an episode is within its premiere detection window."""
     if not episode.airstamp:
         return False
 

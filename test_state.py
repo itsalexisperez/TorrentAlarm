@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from contextlib import redirect_stdout
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import io
 import json
 from pathlib import Path
@@ -35,6 +35,20 @@ def episode(code_season: int, code_number: int) -> Episode:
 
 
 class StateTests(unittest.TestCase):
+    def test_active_window_boundaries(self) -> None:
+        premiere = datetime(2026, 8, 27, 1, 0, tzinfo=timezone.utc)
+        test_times = (
+            ("before premiere", premiere - timedelta(minutes=1), False),
+            ("during first three hours", premiere + timedelta(hours=2), True),
+            ("premiere plus 3h23m", premiere + timedelta(hours=3, minutes=23), True),
+            ("premiere plus 11h59m", premiere + timedelta(hours=11, minutes=59), True),
+            ("premiere plus 12h", premiere + timedelta(hours=12), False),
+        )
+
+        for label, now, expected in test_times:
+            with self.subTest(label=label):
+                self.assertEqual(alarm_once.is_active(episode(1, 6), now), expected)
+
     def test_missing_state_starts_empty(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"

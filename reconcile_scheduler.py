@@ -61,12 +61,16 @@ def reconcile(
     state, migrated = load_state_with_migration(
         state_path, {show.show_id: show.season for show in shows}
     )
-    if not isinstance(state.get("scheduler"), dict) and _preflight_backoff_active(
-        state.get("scheduler_preflight"), client.job_id, now
-    ):
+    preflight = state.get("scheduler_preflight")
+    preflight_verified = (
+        isinstance(preflight, dict)
+        and preflight.get("job_id") == client.job_id
+        and preflight.get("title_verified") is True
+    )
+    if not preflight_verified and _preflight_backoff_active(preflight, client.job_id, now):
         print("ERROR: scheduler preflight is in backoff; retrying later")
         return 1
-    if not isinstance(state.get("scheduler"), dict):
+    if not preflight_verified:
         try:
             job = client.get_job()
         except CronJobAPIError as error:

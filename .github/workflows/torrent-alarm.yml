@@ -35,6 +35,14 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: python alarm_once.py
 
+      - name: Reconcile Smart Scheduler
+        if: ${{ always() }}
+        env:
+          CRONJOB_API_KEY: ${{ secrets.CRONJOB_API_KEY }}
+          CRONJOB_JOB_ID: ${{ vars.CRONJOB_JOB_ID }}
+          SMART_SCHEDULER_ENABLED: ${{ vars.SMART_SCHEDULER_ENABLED }}
+        run: python reconcile_scheduler.py
+
       - name: Persist notification state
         if: ${{ always() }}
         shell: bash

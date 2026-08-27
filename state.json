@@ -52,5 +52,10 @@
       }
     },
     "applied_at": "2026-08-27T19:55:23.602912+00:00"
+  },
+  "scheduler_preflight": {
+    "job_id": "8335122",
+    "title_verified": true,
+    "checked_at": "2026-08-27T19:58:51.038446+00:00"
   }
 }

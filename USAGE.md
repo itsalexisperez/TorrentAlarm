@@ -17,19 +17,21 @@ El scheduler externo (cron-job.org) es quien dispara el workflow cada cinco minu
       "show_id": 68193,
       "name": "The Shards",
       "season": 1,
-      "enabled": true
+      "enabled": true,
+      "release_offset_minutes": 0
     },
     {
       "show_id": 44458,
       "name": "Ted Lasso",
       "season": 4,
-      "enabled": true
+      "enabled": true,
+      "release_offset_minutes": -660
     }
   ]
 }
 ```
 
-Cada `show_id` debe ser un entero positivo único; `name` no puede estar vacío; `season` debe ser positiva y `enabled` debe ser booleano.
+Cada `show_id` debe ser un entero positivo único; `name` no puede estar vacío; `season` debe ser positiva y `enabled` debe ser booleano. `release_offset_minutes` es opcional, por defecto `0`, debe ser un entero entre `-10080` y `10080` (±7 días). Un valor negativo adelanta el inicio de vigilancia respecto de TVMaze; uno positivo lo retrasa. No modifica el `airstamp` original de TVMaze: solo corrige la ventana efectiva de vigilancia.
 
 ## Estado persistente
 
@@ -59,12 +61,14 @@ Una temporada pasa a `completed: true` cuando TVMaze muestra al menos un episodi
 ```bash
 python manage_shows.py list
 python manage_shows.py add "Ted Lasso" --season 4
+python manage_shows.py add "Ted Lasso" --season 4 --release-offset-minutes -660
+python manage_shows.py set-offset "Ted Lasso" --minutes -660
 python manage_shows.py add "Nombre ambiguo" --season 1 --show-id 12345
 python manage_shows.py disable "The Shards"
 python manage_shows.py enable "The Shards"
 ```
 
-`add` busca el nombre en TVMaze, conserva el nombre canónico, valida que la temporada exista y no modifica `state.json`, secretos ni Telegram. Si hay varios resultados se debe usar `--show-id`. Deshabilitar y reactivar una serie conserva su historial, por lo que no repite episodios ya notificados.
+`add` busca el nombre en TVMaze, conserva el nombre canónico, valida que la temporada exista y no modifica `state.json`, secretos ni Telegram. Si hay varios resultados se debe usar `--show-id`. Deshabilitar y reactivar una serie conserva su historial, por lo que no repite episodios ya notificados. Cambiar el offset tampoco borra ni reenvía episodios ya notificados; el cambio de `shows.json` provoca la reconciliación del scheduler.
 
 ## Recuperación y mantenimiento
 

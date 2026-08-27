@@ -10,6 +10,7 @@ from typing import Mapping, Sequence
 
 from shows import ShowConfig
 from state import State, is_notified
+from temporal import effective_airstamp
 from tvmaze import Episode
 
 
@@ -38,15 +39,9 @@ class ScheduleDecision:
 
 
 def parse_airstamp(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+    """Backward-compatible scheduler alias for the shared timestamp parser."""
+    parsed = effective_airstamp(value)
+    return parsed.astimezone(timezone.utc) if parsed is not None else None
 
 
 def _utc_now(now: datetime) -> datetime:
@@ -134,9 +129,22 @@ def _target_for(
     return {"enabled": True, "schedule": schedule}
 
 
-def _fingerprint(mode: str, target: dict[str, object]) -> str:
+def _fingerprint(
+    mode: str, target: dict[str, object], shows: Sequence[ShowConfig]
+) -> str:
+    show_configuration = [
+        {
+            "show_id": show.show_id,
+            "season": show.season,
+            "enabled": show.enabled,
+            "release_offset_minutes": show.release_offset_minutes,
+        }
+        for show in shows
+    ]
     encoded = json.dumps(
-        {"mode": mode, "target": target}, sort_keys=True, separators=(",", ":")
+        {"mode": mode, "target": target, "shows": show_configuration},
+        sort_keys=True,
+        separators=(",", ":"),
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
@@ -158,7 +166,11 @@ def decide(
         for episode in episodes_by_show.get(show.show_id, ()):
             if episode.season != show.season:
                 continue
-            premiere = parse_airstamp(episode.airstamp)
+            premiere = effective_airstamp(
+                episode.airstamp, show.release_offset_minutes
+            )
+            if premiere is not None:
+                premiere = premiere.astimezone(timezone.utc)
             if premiere is None:
                 continue
             if premiere > current:
@@ -192,7 +204,7 @@ def decide(
         pending=tuple(sorted(pending, key=lambda item: (item.airstamp, item.show_id, item.code))),
         next_wake=next_wake,
         active_until=active_until,
-        fingerprint=_fingerprint(mode, target),
+        fingerprint=_fingerprint(mode, target, shows),
         target=target,
         reason=reason,
     )

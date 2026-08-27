@@ -20,6 +20,7 @@ from state import (
     save_state,
     set_completed,
 )
+from temporal import effective_airstamp
 from telegram_notify import TelegramNotificationError, send_message
 from tvmaze import Episode, TVMazeError, fetch_episodes, fetch_imdb_id
 
@@ -50,28 +51,23 @@ def parse_now(value: str | None) -> datetime:
     return parsed
 
 
-def _parse_airstamp(value: str | None) -> datetime | None:
-    if not value:
-        return None
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return None
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed
-
-
-def is_active(episode: Episode, now: datetime) -> bool:
+def is_active(
+    episode: Episode, now: datetime, release_offset_minutes: int = 0
+) -> bool:
     """Return whether an episode is within its 12-hour premiere window."""
-    premiere = _parse_airstamp(episode.airstamp)
+    premiere = effective_airstamp(episode.airstamp, release_offset_minutes)
     if premiere is None:
         return False
     current = now.astimezone(premiere.tzinfo)
     return premiere <= current < premiere + ACTIVE_WINDOW
 
 
-def is_season_completed(episodes: list[Episode], season: int, now: datetime) -> bool:
+def is_season_completed(
+    episodes: list[Episode],
+    season: int,
+    now: datetime,
+    release_offset_minutes: int = 0,
+) -> bool:
     """Apply conservative airstamp-based season completion rules."""
     season_episodes = [episode for episode in episodes if episode.season == season]
     if not season_episodes:
@@ -79,7 +75,7 @@ def is_season_completed(episodes: list[Episode], season: int, now: datetime) -> 
 
     timestamps: list[datetime] = []
     for episode in season_episodes:
-        timestamp = _parse_airstamp(episode.airstamp)
+        timestamp = effective_airstamp(episode.airstamp, release_offset_minutes)
         if timestamp is None:
             return False
         current = now.astimezone(timestamp.tzinfo)
@@ -89,7 +85,7 @@ def is_season_completed(episodes: list[Episode], season: int, now: datetime) -> 
 
     last_episode = max(timestamps)
     return now.astimezone(last_episode.tzinfo) >= last_episode + ACTIVE_WINDOW and not any(
-        is_active(episode, now) for episode in season_episodes
+        is_active(episode, now, release_offset_minutes) for episode in season_episodes
     )
 
 
@@ -132,7 +128,9 @@ def run_once(
             continue
 
         completed = is_completed(state, show.show_id, show.season)
-        if completed and not is_season_completed(episodes, show.season, now):
+        if completed and not is_season_completed(
+            episodes, show.season, now, show.release_offset_minutes
+        ):
             if not dry_run:
                 state_changed = set_completed(state, show.show_id, show.season, False) or state_changed
             completed = False
@@ -144,7 +142,8 @@ def run_once(
         active_episodes = [
             episode
             for episode in episodes
-            if episode.season == show.season and is_active(episode, now)
+            if episode.season == show.season
+            and is_active(episode, now, show.release_offset_minutes)
         ]
         pending_episodes = [
             episode
@@ -194,7 +193,10 @@ def run_once(
             mark_notified(state, show.show_id, episode.code)
             state_changed = True
 
-        if is_season_completed(episodes, show.season, now) and not dry_run:
+        if (
+            is_season_completed(episodes, show.season, now, show.release_offset_minutes)
+            and not dry_run
+        ):
             state_changed = set_completed(state, show.show_id, show.season, True) or state_changed
             print(f"COMPLETED: {show.name} season {show.season}")
 

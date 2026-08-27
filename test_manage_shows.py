@@ -30,7 +30,8 @@ class ManageShowsTests(unittest.TestCase):
             with patch("builtins.print") as output:
                 self.assertEqual(manage_shows.run(["--config", str(path), "list"]), 0)
             output.assert_called_once_with(
-                "The Shards | show_id=68193 | season=1 | enabled"
+                "The Shards | show_id=68193 | season=1 | "
+                "release_offset_minutes=0 | enabled"
             )
         finally:
             directory.cleanup()

@@ -5,7 +5,14 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from shows import SHOWS_FILE, ShowConfig, ShowsConfigError, load_shows, save_shows
+from shows import (
+    SHOWS_FILE,
+    ShowConfig,
+    ShowsConfigError,
+    load_shows,
+    save_shows,
+    validate_release_offset_minutes,
+)
 from tvmaze import TVMazeError, fetch_episodes, fetch_show, search_shows
 
 
@@ -24,6 +31,11 @@ def build_parser() -> argparse.ArgumentParser:
     add.add_argument("name", help="show name to search")
     add.add_argument("--season", type=int, required=True)
     add.add_argument("--show-id", type=int)
+    add.add_argument("--release-offset-minutes", type=int, default=0)
+
+    set_offset = commands.add_parser("set-offset", help="set a show's release offset")
+    set_offset.add_argument("name")
+    set_offset.add_argument("--minutes", type=int, required=True)
 
     for command in ("disable", "enable"):
         action = commands.add_parser(command, help=f"{command} a configured show")
@@ -56,13 +68,26 @@ def _resolve_show(name: str, show_id: int | None):
 def command_list(path: Path) -> int:
     for show in load_shows(path):
         status = "enabled" if show.enabled else "disabled"
-        print(f"{show.name} | show_id={show.show_id} | season={show.season} | {status}")
+        print(
+            f"{show.name} | show_id={show.show_id} | season={show.season} | "
+            f"release_offset_minutes={show.release_offset_minutes} | {status}"
+        )
     return 0
 
 
-def command_add(path: Path, name: str, season: int, show_id: int | None) -> int:
+def command_add(
+    path: Path,
+    name: str,
+    season: int,
+    show_id: int | None,
+    release_offset_minutes: int,
+) -> int:
     if season <= 0:
         raise ManageShowsError("season must be a positive integer")
+    try:
+        validate_release_offset_minutes(release_offset_minutes)
+    except ShowsConfigError as error:
+        raise ManageShowsError(str(error)) from error
     shows = load_shows(path)
     resolved = _resolve_show(name, show_id)
     if any(show.show_id == resolved.show_id for show in shows):
@@ -75,9 +100,14 @@ def command_add(path: Path, name: str, season: int, show_id: int | None) -> int:
         raise ManageShowsError(
             f"TVMaze does not show season {season} for {resolved.name}"
         )
-    shows.append(ShowConfig(resolved.show_id, resolved.name, season, True))
+    shows.append(
+        ShowConfig(resolved.show_id, resolved.name, season, True, release_offset_minutes)
+    )
     save_shows(shows, path)
-    print(f"ADDED: {resolved.name} | show_id={resolved.show_id} | season={season}")
+    print(
+        f"ADDED: {resolved.name} | show_id={resolved.show_id} | season={season} | "
+        f"release_offset_minutes={release_offset_minutes}"
+    )
     return 0
 
 
@@ -85,9 +115,27 @@ def command_toggle(path: Path, name: str, enabled: bool) -> int:
     shows = load_shows(path)
     index = _find_by_name(shows, name)
     current = shows[index]
-    shows[index] = ShowConfig(current.show_id, current.name, current.season, enabled)
+    shows[index] = ShowConfig(
+        current.show_id,
+        current.name,
+        current.season,
+        enabled,
+        current.release_offset_minutes,
+    )
     save_shows(shows, path)
     print(f"{'ENABLED' if enabled else 'DISABLED'}: {current.name}")
+    return 0
+
+
+def command_set_offset(path: Path, name: str, minutes: int) -> int:
+    shows = load_shows(path)
+    index = _find_by_name(shows, name)
+    current = shows[index]
+    shows[index] = ShowConfig(
+        current.show_id, current.name, current.season, current.enabled, minutes
+    )
+    save_shows(shows, path)
+    print(f"OFFSET_SET: {current.name} | release_offset_minutes={minutes}")
     return 0
 
 
@@ -97,7 +145,15 @@ def run(argv: list[str] | None = None) -> int:
         if args.command == "list":
             return command_list(args.config)
         if args.command == "add":
-            return command_add(args.config, args.name, args.season, args.show_id)
+            return command_add(
+                args.config,
+                args.name,
+                args.season,
+                args.show_id,
+                args.release_offset_minutes,
+            )
+        if args.command == "set-offset":
+            return command_set_offset(args.config, args.name, args.minutes)
         return command_toggle(args.config, args.name, args.command == "enable")
     except (ManageShowsError, ShowsConfigError, TVMazeError, ValueError) as error:
         print(f"ERROR: {error}")

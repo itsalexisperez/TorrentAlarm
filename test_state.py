@@ -12,8 +12,11 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import requests
+
 import alarm_once
 from state import is_notified, load_state, mark_notified, save_state
+from telegram_notify import TelegramNotificationError
 from tvmaze import Episode
 
 
@@ -69,7 +72,7 @@ class StateTests(unittest.TestCase):
             save_state({"68193": {"S01E06": True}}, state_path)
             with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
                 alarm_once, "check_episode"
-            ) as check:
+            ) as check, patch.object(alarm_once, "send_message") as send:
                 output = io.StringIO()
                 with redirect_stdout(output):
                     result = alarm_once.run_once(NOW, state_path=state_path)
@@ -77,6 +80,72 @@ class StateTests(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertEqual(output.getvalue(), "SKIPPED_ALREADY_NOTIFIED: S01E06\n")
             check.assert_not_called()
+            send.assert_not_called()
+
+    def test_found_episode_sends_and_marks_notified(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "check_episode", return_value="The Shards S01E06"
+            ), patch.object(alarm_once, "send_message", return_value={}) as send:
+                result = alarm_once.run_once(NOW, state_path=state_path)
+
+            self.assertEqual(result, 0)
+            send.assert_called_once_with(
+                "🚨 TorrentAlarm\n\n"
+                "The Shards S01E06 ya está disponible.\n\n"
+                "Torrent detectado:\n"
+                "The Shards S01E06"
+            )
+            self.assertTrue(is_notified(load_state(state_path), 68193, "S01E06"))
+
+    def test_telegram_failure_does_not_mark_notified(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "check_episode", return_value="The Shards S01E06"
+            ), patch.object(
+                alarm_once,
+                "send_message",
+                side_effect=TelegramNotificationError("temporary failure"),
+            ) as send:
+                result = alarm_once.run_once(NOW, state_path=state_path)
+
+            self.assertEqual(result, 1)
+            send.assert_called_once()
+            self.assertFalse(is_notified(load_state(state_path), 68193, "S01E06"))
+
+    def test_multiple_simultaneous_episodes_are_sent_and_saved(self) -> None:
+        episodes = [episode(1, 6), episode(1, 7)]
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            with patch.object(alarm_once, "fetch_episodes", return_value=episodes), patch.object(
+                alarm_once, "check_episode", side_effect=["Torrent 6", "Torrent 7"]
+            ), patch.object(alarm_once, "send_message", return_value={}) as send:
+                result = alarm_once.run_once(NOW, state_path=state_path)
+
+            self.assertEqual(result, 0)
+            self.assertEqual(send.call_count, 2)
+            saved_state = load_state(state_path)
+            self.assertTrue(is_notified(saved_state, 68193, "S01E06"))
+            self.assertTrue(is_notified(saved_state, 68193, "S01E07"))
+
+    def test_one_episode_failure_does_not_stop_the_others(self) -> None:
+        episodes = [episode(1, 6), episode(1, 7)]
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            with patch.object(alarm_once, "fetch_episodes", return_value=episodes), patch.object(
+                alarm_once,
+                "check_episode",
+                side_effect=[requests.RequestException("EXTTO unavailable"), "Torrent 7"],
+            ), patch.object(alarm_once, "send_message", return_value={}) as send:
+                result = alarm_once.run_once(NOW, state_path=state_path)
+
+            self.assertEqual(result, 1)
+            send.assert_called_once()
+            saved_state = load_state(state_path)
+            self.assertFalse(is_notified(saved_state, 68193, "S01E06"))
+            self.assertTrue(is_notified(saved_state, 68193, "S01E07"))
 
     def test_dry_run_does_not_modify_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -102,7 +171,15 @@ class StateTests(unittest.TestCase):
                     result = alarm_once.main()
 
             self.assertEqual(result, 0)
-            self.assertEqual(output.getvalue(), "FOUND: S01E06 | The Shards S01E06\n")
+            self.assertEqual(
+                output.getvalue(),
+                "FOUND: S01E06 | The Shards S01E06\n"
+                "DRY_RUN: Telegram message for S01E06:\n"
+                "🚨 TorrentAlarm\n\n"
+                "The Shards S01E06 ya está disponible.\n\n"
+                "Torrent detectado:\n"
+                "The Shards S01E06\n",
+            )
             self.assertEqual(state_path.read_bytes(), before)
             self.assertFalse(is_notified(load_state(state_path), 68193, "S01E06"))
 

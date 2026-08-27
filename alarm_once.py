@@ -10,6 +10,7 @@ import requests
 
 from check_extto import check_episode
 from state import StateError, is_notified, load_state, mark_notified, save_state
+from telegram_notify import TelegramNotificationError, send_message
 from tvmaze import Episode, TVMazeError, fetch_episodes
 
 
@@ -17,6 +18,15 @@ SERIES_NAME = "The Shards"
 SHOW_ID = 68193
 ACTIVE_WINDOW = timedelta(hours=3)
 STATE_FILE = Path(__file__).with_name("state.json")
+
+
+def notification_message(episode: Episode, title: str) -> str:
+    return (
+        "🚨 TorrentAlarm\n\n"
+        f"{SERIES_NAME} {episode.code} ya está disponible.\n\n"
+        "Torrent detectado:\n"
+        f"{title}"
+    )
 
 
 def parse_now(value: str | None) -> datetime:
@@ -73,6 +83,7 @@ def run_once(
     episodes = fetch_episodes(SHOW_ID)
     active_episodes = [episode for episode in episodes if is_active(episode, now)]
     state_changed = False
+    had_errors = False
 
     for episode in active_episodes:
         if is_notified(state, SHOW_ID, episode.code):
@@ -84,21 +95,32 @@ def run_once(
         except requests.RequestException as error:
             description = str(error).splitlines()[0].strip() or error.__class__.__name__
             print(f"ERROR: {episode.code} | {description[:240]}")
-            return 1
+            had_errors = True
+            continue
 
         if title is None:
             print(f"NOT_FOUND: {episode.code}")
         else:
             print(f"FOUND: {episode.code} | {title}")
-            if not dry_run:
-                mark_notified(state, SHOW_ID, episode.code)
-                state_changed = True
+            message = notification_message(episode, title)
+            if dry_run:
+                print(f"DRY_RUN: Telegram message for {episode.code}:\n{message}")
+                continue
+
+            try:
+                send_message(message)
+            except TelegramNotificationError as error:
+                print(f"ERROR: Telegram failed for {episode.code}: {error}")
+                had_errors = True
+                continue
+
+            mark_notified(state, SHOW_ID, episode.code)
+            state_changed = True
 
     if state_changed and not dry_run:
         save_state(state, state_path)
 
-    # Telegram is intentionally not called yet; --dry-run remains side-effect free.
-    return 0
+    return 1 if had_errors else 0
 
 
 def main() -> int:

@@ -48,3 +48,4 @@
 - Rama de trabajo: `feature/smart-scheduler`.
 - Commits de implementación: `c97079a`, `14d829e`, `e8d3eca`.
 - Cambios no relacionados preexistentes preservados: `AgregarShow.md` y `TorrentAlarm_Smart_Scheduler_Codex_Plan/`.
+- Estado final: `main` sincronizado con `origin/main`; solo permanecen esos dos elementos no trackeados preexistentes.

@@ -76,4 +76,9 @@ class CronJobClient:
         details = payload.get("jobDetails") if isinstance(payload, dict) else None
         if not isinstance(details, dict):
             raise CronJobAPIError("cron-job.org returned an invalid job response")
-        return details
+        # Keep preflight callers away from extendedData, which may contain
+        # private request headers or body data unrelated to scheduling.
+        return {
+            key: details.get(key)
+            for key in ("jobId", "title", "enabled", "nextExecution", "schedule", "lastStatus")
+        }

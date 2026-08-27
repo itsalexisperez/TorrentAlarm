@@ -1,0 +1,16 @@
+{
+  "shows": [
+    {
+      "show_id": 68193,
+      "name": "The Shards",
+      "season": 1,
+      "enabled": true
+    },
+    {
+      "show_id": 44458,
+      "name": "Ted Lasso",
+      "season": 4,
+      "enabled": true
+    }
+  ]
+}

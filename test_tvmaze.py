@@ -27,6 +27,23 @@ class FakeResponse:
 
 
 class TVMazeShowTests(unittest.TestCase):
+    def test_search_shows_extracts_canonical_results(self) -> None:
+        response = FakeResponse(
+            [
+                {"score": 1, "show": {"id": 44458, "name": "Ted Lasso"}},
+                {"score": 0.5, "show": {"id": 99, "name": "Ted"}},
+            ]
+        )
+        with patch.object(tvmaze.requests, "get", return_value=response) as get:
+            result = tvmaze.search_shows("Ted Lasso")
+        self.assertEqual(result[0].show_id, 44458)
+        self.assertEqual(get.call_args.kwargs["params"], {"q": "Ted Lasso"})
+
+    def test_fetch_show_returns_canonical_metadata(self) -> None:
+        response = FakeResponse({"id": 44458, "name": "Ted Lasso"})
+        with patch.object(tvmaze.requests, "get", return_value=response):
+            self.assertEqual(tvmaze.fetch_show(44458), tvmaze.Show(44458, "Ted Lasso"))
+
     def test_fetch_imdb_id_normalizes_prefix(self) -> None:
         response = FakeResponse({"externals": {"imdb": "tt27543562"}})
         with patch.object(tvmaze.requests, "get", return_value=response) as get:

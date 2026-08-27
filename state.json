@@ -1,6 +1,17 @@
 {
-  "68193": {
-    "S01E06": true,
-    "S01E07": true
+  "shows": {
+    "68193": {
+      "season": 1,
+      "completed": false,
+      "notified": {
+        "S01E06": true,
+        "S01E07": true
+      }
+    },
+    "44458": {
+      "season": 4,
+      "completed": false,
+      "notified": {}
+    }
   }
 }

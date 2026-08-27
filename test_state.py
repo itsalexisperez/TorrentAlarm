@@ -66,11 +66,13 @@ class StateTests(unittest.TestCase):
             {"68193": {"S01E06": True}, "12345": {"S02E01": True}},
         )
 
-    def test_skip_does_not_query_extto(self) -> None:
+    def test_skip_does_not_query_eztv(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"
             save_state({"68193": {"S01E06": True}}, state_path)
             with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
                 alarm_once, "check_episode"
             ) as check, patch.object(alarm_once, "send_message") as send:
                 output = io.StringIO()
@@ -86,6 +88,8 @@ class StateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"
             with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
                 alarm_once, "check_episode", return_value="The Shards S01E06"
             ), patch.object(alarm_once, "send_message", return_value={}) as send:
                 result = alarm_once.run_once(NOW, state_path=state_path)
@@ -103,6 +107,8 @@ class StateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"
             with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
                 alarm_once, "check_episode", return_value="The Shards S01E06"
             ), patch.object(
                 alarm_once,
@@ -120,11 +126,14 @@ class StateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"
             with patch.object(alarm_once, "fetch_episodes", return_value=episodes), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ) as resolve_imdb, patch.object(
                 alarm_once, "check_episode", side_effect=["Torrent 6", "Torrent 7"]
             ), patch.object(alarm_once, "send_message", return_value={}) as send:
                 result = alarm_once.run_once(NOW, state_path=state_path)
 
             self.assertEqual(result, 0)
+            resolve_imdb.assert_called_once_with(68193)
             self.assertEqual(send.call_count, 2)
             saved_state = load_state(state_path)
             self.assertTrue(is_notified(saved_state, 68193, "S01E06"))
@@ -135,9 +144,11 @@ class StateTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"
             with patch.object(alarm_once, "fetch_episodes", return_value=episodes), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
                 alarm_once,
                 "check_episode",
-                side_effect=[requests.RequestException("EXTTO unavailable"), "Torrent 7"],
+                side_effect=[requests.RequestException("EZTV unavailable"), "Torrent 7"],
             ), patch.object(alarm_once, "send_message", return_value={}) as send:
                 result = alarm_once.run_once(NOW, state_path=state_path)
 
@@ -163,7 +174,7 @@ class StateTests(unittest.TestCase):
             ]
             with patch.object(alarm_once, "STATE_FILE", state_path), patch.object(
                 alarm_once, "fetch_episodes", return_value=[episode(1, 6)]
-            ), patch.object(
+            ), patch.object(alarm_once, "fetch_imdb_id", return_value="27543562"), patch.object(
                 alarm_once, "check_episode", return_value="The Shards S01E06"
             ), patch.object(sys, "argv", argv):
                 output = io.StringIO()

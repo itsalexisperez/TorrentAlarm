@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
+import re
 import sys
 from typing import Any
 
@@ -11,8 +12,10 @@ import requests
 
 
 TVMAZE_EPISODES_URL = "https://api.tvmaze.com/shows/{show_id}/episodes"
+TVMAZE_SHOW_URL = "https://api.tvmaze.com/shows/{show_id}"
 REQUEST_TIMEOUT = 20
 USER_AGENT = "TorrentAlarm/0.1 (TVMaze episode calendar reader)"
+IMDB_ID_RE = re.compile(r"(?:tt)?(?P<id>[0-9]{7,})$", re.IGNORECASE)
 
 
 class TVMazeError(RuntimeError):
@@ -75,6 +78,43 @@ def fetch_episodes(show_id: int) -> list[Episode]:
         return [_episode_from_payload(item) for item in payload]
     except (KeyError, TypeError, ValueError) as error:
         raise TVMazeError("TVMaze returned an invalid episode") from error
+
+
+def fetch_imdb_id(show_id: int) -> str:
+    """Fetch a show's IMDb ID and return it in EZTV's numeric format."""
+    if show_id <= 0:
+        raise ValueError("show ID must be a positive integer")
+
+    try:
+        response = requests.get(
+            TVMAZE_SHOW_URL.format(show_id=show_id),
+            headers={"User-Agent": USER_AGENT},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.Timeout as error:
+        raise TVMazeError("TVMaze show request timed out") from error
+    except requests.HTTPError as error:
+        raise TVMazeError(f"TVMaze returned HTTP {response.status_code} for show") from error
+    except requests.RequestException as error:
+        raise TVMazeError("TVMaze show request failed") from error
+
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise TVMazeError("TVMaze returned invalid show JSON") from error
+
+    if not isinstance(payload, dict):
+        raise TVMazeError("TVMaze returned an unexpected show object")
+    externals = payload.get("externals")
+    raw_imdb_id = externals.get("imdb") if isinstance(externals, dict) else None
+    if not isinstance(raw_imdb_id, str):
+        raise TVMazeError("TVMaze show has no IMDb ID")
+
+    match = IMDB_ID_RE.fullmatch(raw_imdb_id.strip())
+    if match is None:
+        raise TVMazeError("TVMaze show returned an invalid IMDb ID")
+    return match.group("id")
 
 
 def _parse_airstamp(value: str) -> datetime | None:

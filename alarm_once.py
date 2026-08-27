@@ -1,4 +1,4 @@
-"""Run one calendar-to-EXTTO availability check and then exit."""
+"""Run one calendar-to-EZTV availability check and then exit."""
 
 from __future__ import annotations
 
@@ -8,10 +8,10 @@ from pathlib import Path
 
 import requests
 
-from check_extto import check_episode
+from check_eztv import EZTVError, check_episode
 from state import StateError, is_notified, load_state, mark_notified, save_state
 from telegram_notify import TelegramNotificationError, send_message
-from tvmaze import Episode, TVMazeError, fetch_episodes
+from tvmaze import Episode, TVMazeError, fetch_episodes, fetch_imdb_id
 
 
 SERIES_NAME = "The Shards"
@@ -64,7 +64,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="never send Telegram (Telegram is disabled in this one-shot integration)",
+        help="never send Telegram",
     )
     parser.add_argument(
         "--now",
@@ -84,6 +84,7 @@ def run_once(
     active_episodes = [episode for episode in episodes if is_active(episode, now)]
     state_changed = False
     had_errors = False
+    imdb_id = fetch_imdb_id(SHOW_ID) if active_episodes else None
 
     for episode in active_episodes:
         if is_notified(state, SHOW_ID, episode.code):
@@ -91,8 +92,8 @@ def run_once(
             continue
 
         try:
-            title = check_episode(SERIES_NAME, episode.code)
-        except requests.RequestException as error:
+            title = check_episode(SERIES_NAME, episode.code, imdb_id)
+        except (EZTVError, requests.RequestException) as error:
             description = str(error).splitlines()[0].strip() or error.__class__.__name__
             print(f"ERROR: {episode.code} | {description[:240]}")
             had_errors = True

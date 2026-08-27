@@ -28,3 +28,17 @@
 - Commits creados: pendiente de crear en esta fase.
 - Runs de GitHub Actions verificados: pendiente del despliegue.
 - Problemas encontrados y resolución: los tests heredados esperaban el estado plano; se actualizaron al esquema versionado sin perder la cobertura de deduplicación y fallo de Telegram.
+
+## Fase 3 — migración de estado y fin automático de temporada
+
+- Fecha/hora UTC: 2026-08-27T05:18:00Z
+- Objetivo: preservar el historial real, hacer idempotente la migración y detener consultas EZTV cuando una temporada terminó con evidencia temporal suficiente.
+- Archivos creados/modificados: `state.py`, `state.json`, `alarm_once.py`, `test_state.py`.
+- Esquema final: `state.shows[show_id]` contiene `season`, `completed` y `notified`; el formato anterior por show ID se normaliza durante la carga y se persiste atómicamente en la misma ejecución.
+- Decisiones técnicas: `shows.json` aporta las temporadas autoritativas durante la migración; una temporada solo completa si todos sus episodios conocidos tienen `airstamp` válido y pasado, el último supera 12 horas y no existe episodio activo. TVMaze sigue consultándose para detectar cambios de calendario; una serie completada omite IMDb/EZTV.
+- Invariantes verificadas: S01E06 y S01E07 siguen verdaderas después de migrar; Telegram se marca solo después de una respuesta exitosa; un fallo deja el episodio pendiente; completion es independiente por serie.
+- Comandos relevantes: `.venv/bin/python -m unittest discover -v`; `git diff --check`.
+- Tests y resultados: `55` tests verdes; migración automática e idempotente, futuro `<12h`, `+12h`, serie completada y múltiples series cubiertos.
+- Commits creados: pendiente de crear en esta fase.
+- Runs de GitHub Actions verificados: pendiente del despliegue.
+- Problemas encontrados y resolución: el esquema anterior no contenía temporada, por lo que el runtime pasa el mapa autoritativo desde `shows.json`; las lecturas independientes conservan compatibilidad con temporada 1 para no romper herramientas antiguas.

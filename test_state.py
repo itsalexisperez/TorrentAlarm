@@ -104,6 +104,23 @@ class StateTests(unittest.TestCase):
             self.assertFalse(changed_again)
             self.assertEqual(again, migrated)
 
+    def test_alarm_persists_legacy_migration_without_manual_step(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            shows_path = Path(directory) / "shows.json"
+            state_path.write_text(
+                json.dumps({"68193": {"S01E06": True, "S01E07": True}}), encoding="utf-8"
+            )
+            write_shows(shows_path, ShowConfig(68193, "The Shards", 1))
+            future = episode(1, 8, "2026-09-01T01:00:00+00:00")
+            with patch.object(alarm_once, "fetch_episodes", return_value=[future]):
+                result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
+            self.assertEqual(result, 0)
+            migrated = load_state(state_path)
+            self.assertTrue(is_notified(migrated, 68193, "S01E06"))
+            self.assertTrue(is_notified(migrated, 68193, "S01E07"))
+            self.assertEqual(migrated["shows"]["68193"]["season"], 1)
+
     def test_telegram_failure_does_not_mark_notified(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             state_path = Path(directory) / "state.json"
@@ -231,6 +248,38 @@ class StateTests(unittest.TestCase):
                 result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
             self.assertEqual(result, 0)
             fetch.assert_called_once_with(44458)
+
+    def test_completion_is_independent_between_series(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            shows_path = Path(directory) / "shows.json"
+            write_shows(
+                shows_path,
+                ShowConfig(68193, "The Shards", 1),
+                ShowConfig(44458, "Ted Lasso", 4),
+            )
+            save_state(
+                {
+                    "shows": {
+                        "68193": {"season": 1, "completed": True, "notified": {}},
+                        "44458": {"season": 4, "completed": False, "notified": {}},
+                    }
+                },
+                state_path,
+            )
+            with patch.object(
+                alarm_once,
+                "fetch_episodes",
+                side_effect=[
+                    [episode(1, 1, "2026-08-20T01:00:00+00:00")],
+                    [episode(4, 1)],
+                ],
+            ), patch.object(alarm_once, "fetch_imdb_id", return_value="12345678"), patch.object(
+                alarm_once, "check_episode", return_value="Ted Lasso S04E01"
+            ), patch.object(alarm_once, "send_message", return_value={}) as send:
+                result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
+            self.assertEqual(result, 0)
+            send.assert_called_once()
 
 
 class CompletionTests(unittest.TestCase):

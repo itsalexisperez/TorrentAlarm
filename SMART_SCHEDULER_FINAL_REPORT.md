@@ -5,6 +5,7 @@
 - Resultado: `SMART_SCHEDULER_NOT_ACTIVATED`
 - BASELINE_SHA: `bd25ada0d78e812e32c1e766c72391960d774d0a`
 - SHA final de Fase A: `e8d3ecace2b4b9a8f66ed44b911b2bcc07cd6dbf`
+- SHA final de código (incluye sanitización de preflight): `f0ae72954dded06454dee2ce38b0519ed9ce1111`
 - Tests: 74/74 passing
 
 ## Antes

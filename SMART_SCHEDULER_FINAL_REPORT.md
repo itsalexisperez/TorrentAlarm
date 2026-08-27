@@ -4,13 +4,14 @@
 
 - Resultado: `SMART_SCHEDULER_NOT_ACTIVATED`
 - BASELINE_SHA: `bd25ada0d78e812e32c1e766c72391960d774d0a`
-- SHA final: se registrará en el handoff tras la integración de Fase A
+- SHA final de Fase A: `e8d3ecace2b4b9a8f66ed44b911b2bcc07cd6dbf`
 - Tests: 74/74 passing
 
 ## Antes
 
 - Runs teóricos/día: 288 (cada 5 minutos)
 - Evidencia: los 20 runs recientes consultados fueron `workflow_dispatch` exitosos y espaciados aproximadamente 5 minutos.
+- Validación natural post-despliegue: run `33109946576`, `success`, `workflow_dispatch`, 2026-08-27 19:45 UTC, SHA de Fase A.
 
 ## Fase A desplegada
 
@@ -26,6 +27,7 @@
 - PATCH reales: 0; activación no autorizada por credenciales ausentes.
 - Requests/día estimadas durante operación: 0 cuando el fingerprint no cambia; como máximo una por transición de schedule, muy por debajo de 100/día.
 - `CRONJOB_API_KEY`, `CRONJOB_JOB_ID` y `SMART_SCHEDULER_ENABLED` no están configurados en GitHub al momento del checkpoint.
+- El log natural confirmó `SMART_SCHEDULER_DISABLED`, cero PATCH y `state.json unchanged`.
 
 ## Producción
 
@@ -44,4 +46,5 @@
 ## Git
 
 - Rama de trabajo: `feature/smart-scheduler`.
+- Commits de implementación: `c97079a`, `14d829e`, `e8d3eca`.
 - Cambios no relacionados preexistentes preservados: `AgregarShow.md` y `TorrentAlarm_Smart_Scheduler_Codex_Plan/`.

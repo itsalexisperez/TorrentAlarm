@@ -144,6 +144,8 @@ class SchedulerReconcileTests(unittest.TestCase):
             write_shows(shows_path, [show()])
             state = {"shows": {}}
             client = Mock()
+            client.job_id = "123"
+            client.get_job.return_value = {"jobId": 123, "title": "TorrentAlarm"}
             with patch.object(reconcile_scheduler, "fetch_episodes", return_value=[]):
                 reconcile_scheduler.reconcile(NOW, state_path=state_path, shows_path=shows_path, client=client)
             client.patch_job.assert_called_once()
@@ -157,6 +159,8 @@ class SchedulerReconcileTests(unittest.TestCase):
             state_path, shows_path = Path(directory) / "state.json", Path(directory) / "shows.json"
             write_shows(shows_path, [show()])
             client = Mock()
+            client.job_id = "123"
+            client.get_job.return_value = {"jobId": 123, "title": "TorrentAlarm"}
             future = episode(8, "2026-08-27T03:00:00+00:00")
             with patch.object(reconcile_scheduler, "fetch_episodes", return_value=[future]):
                 reconcile_scheduler.reconcile(NOW, state_path=state_path, shows_path=shows_path, client=client)
@@ -181,6 +185,8 @@ class SchedulerReconcileTests(unittest.TestCase):
             state_path, shows_path = Path(directory) / "state.json", Path(directory) / "shows.json"
             write_shows(shows_path, [show()])
             client = Mock()
+            client.job_id = "123"
+            client.get_job.return_value = {"jobId": 123, "title": "TorrentAlarm"}
             client.patch_job.side_effect = CronJobAPIError("cron-job.org request timed out")
             with patch.object(reconcile_scheduler, "fetch_episodes", return_value=[]):
                 result = reconcile_scheduler.reconcile(
@@ -188,6 +194,43 @@ class SchedulerReconcileTests(unittest.TestCase):
                 )
             self.assertEqual(result, 1)
             self.assertNotIn("scheduler", load_state(state_path))
+
+    def test_preflight_rejects_a_different_job_title(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path, shows_path = Path(directory) / "state.json", Path(directory) / "shows.json"
+            write_shows(shows_path, [show()])
+            client = Mock()
+            client.job_id = "123"
+            client.get_job.return_value = {"jobId": 123, "title": "Other job"}
+            with patch.object(reconcile_scheduler, "fetch_episodes") as fetch:
+                result = reconcile_scheduler.reconcile(
+                    NOW, state_path=state_path, shows_path=shows_path, client=client
+                )
+            self.assertEqual(result, 1)
+            client.patch_job.assert_not_called()
+            fetch.assert_not_called()
+            self.assertEqual(load_state(state_path)["scheduler_preflight"]["title_verified"], False)
+
+    def test_failed_preflight_is_backed_off_without_repeating_api_calls(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path, shows_path = Path(directory) / "state.json", Path(directory) / "shows.json"
+            write_shows(shows_path, [show()])
+            client = Mock()
+            client.job_id = "123"
+            client.get_job.side_effect = CronJobAPIError("cron-job.org request timed out")
+            with patch.object(reconcile_scheduler, "fetch_episodes") as fetch:
+                first = reconcile_scheduler.reconcile(
+                    NOW, state_path=state_path, shows_path=shows_path, client=client
+                )
+                second = reconcile_scheduler.reconcile(
+                    NOW + timedelta(minutes=5),
+                    state_path=state_path,
+                    shows_path=shows_path,
+                    client=client,
+                )
+            self.assertEqual((first, second), (1, 1))
+            client.get_job.assert_called_once()
+            fetch.assert_not_called()
 
     def test_api_failure_inputs_are_secret_safe_and_never_leak_key(self) -> None:
         secret = "do-not-print-this"

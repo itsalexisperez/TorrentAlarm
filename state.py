@@ -50,6 +50,28 @@ def _normalize_scheduler(raw_scheduler: Any) -> dict[str, Any] | None:
     }
 
 
+def _normalize_scheduler_preflight(raw_preflight: Any) -> dict[str, Any] | None:
+    """Validate non-applied preflight/backoff metadata separately from applied data."""
+    if raw_preflight is None:
+        return None
+    if not isinstance(raw_preflight, dict):
+        raise StateError("state.scheduler_preflight must be an object")
+    job_id = raw_preflight.get("job_id")
+    title_verified = raw_preflight.get("title_verified")
+    checked_at = raw_preflight.get("checked_at")
+    if not isinstance(job_id, str) or not job_id.isdigit() or int(job_id) <= 0:
+        raise StateError("state.scheduler_preflight.job_id is invalid")
+    if not isinstance(title_verified, bool):
+        raise StateError("state.scheduler_preflight.title_verified must be boolean")
+    if not isinstance(checked_at, str) or not checked_at:
+        raise StateError("state.scheduler_preflight.checked_at must not be empty")
+    return {
+        "job_id": str(int(job_id)),
+        "title_verified": title_verified,
+        "checked_at": checked_at,
+    }
+
+
 def _season_for(show_id: str, show_seasons: Mapping[int, int] | None) -> int:
     season = show_seasons.get(int(show_id)) if show_seasons else None
     if season is None:
@@ -94,6 +116,10 @@ def _normalize_state(raw_state: Any, show_seasons: Mapping[int, int] | None) -> 
             scheduler = _normalize_scheduler(raw_state["scheduler"])
             if scheduler is not None:
                 normalized["scheduler"] = scheduler
+        if "scheduler_preflight" in raw_state:
+            preflight = _normalize_scheduler_preflight(raw_state["scheduler_preflight"])
+            if preflight is not None:
+                normalized["scheduler_preflight"] = preflight
         return normalized, raw_state != normalized
 
     migrated_shows: dict[str, dict[str, Any]] = {}
@@ -182,6 +208,8 @@ def save_state(state: State, path: Path = STATE_FILE) -> None:
         raise StateError("state must use the current shows schema before saving")
     if "scheduler" in state:
         _normalize_scheduler(state["scheduler"])
+    if "scheduler_preflight" in state:
+        _normalize_scheduler_preflight(state["scheduler_preflight"])
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path: Path | None = None
     try:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import os
 from pathlib import Path
 
@@ -32,6 +32,24 @@ def is_enabled(value: str | None) -> bool:
     return (value or "").strip().lower() == "true"
 
 
+PREFLIGHT_RETRY_AFTER = timedelta(hours=1)
+
+
+def _preflight_backoff_active(preflight: object, job_id: str, now: datetime) -> bool:
+    if not isinstance(preflight, dict):
+        return False
+    if preflight.get("job_id") != job_id or preflight.get("title_verified") is True:
+        return False
+    checked_at = preflight.get("checked_at")
+    if not isinstance(checked_at, str):
+        return False
+    try:
+        checked = datetime.fromisoformat(checked_at)
+    except ValueError:
+        return False
+    return now.astimezone(timezone.utc) - checked.astimezone(timezone.utc) < PREFLIGHT_RETRY_AFTER
+
+
 def reconcile(
     now: datetime,
     *,
@@ -43,6 +61,40 @@ def reconcile(
     state, migrated = load_state_with_migration(
         state_path, {show.show_id: show.season for show in shows}
     )
+    if not isinstance(state.get("scheduler"), dict) and _preflight_backoff_active(
+        state.get("scheduler_preflight"), client.job_id, now
+    ):
+        print("ERROR: scheduler preflight is in backoff; retrying later")
+        return 1
+    if not isinstance(state.get("scheduler"), dict):
+        try:
+            job = client.get_job()
+        except CronJobAPIError as error:
+            state["scheduler_preflight"] = {
+                "job_id": client.job_id,
+                "title_verified": False,
+                "checked_at": now.astimezone(timezone.utc).isoformat(),
+            }
+            save_state(state, state_path)
+            print(f"ERROR: scheduler preflight failed: {error}")
+            return 1
+        state["scheduler_preflight"] = {
+            "job_id": client.job_id,
+            "title_verified": job.get("title") == "TorrentAlarm",
+            "checked_at": now.astimezone(timezone.utc).isoformat(),
+        }
+        save_state(state, state_path)
+        if job.get("title") != "TorrentAlarm":
+            print("ERROR: scheduler preflight failed: job title is not TorrentAlarm")
+            return 1
+        schedule = job.get("schedule")
+        expires_at = schedule.get("expiresAt") if isinstance(schedule, dict) else None
+        print(
+            "CRONJOB_PREFLIGHT: "
+            f"jobId={job.get('jobId')} enabled={job.get('enabled')} "
+            f"nextExecution={job.get('nextExecution')} schedule={schedule} "
+            f"expiresAt={expires_at} status={job.get('lastStatus')}"
+        )
     episodes_by_show: dict[int, list] = {}
     for show in shows:
         if not show.enabled:

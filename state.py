@@ -16,7 +16,38 @@ class StateError(RuntimeError):
     """Raised when notification state cannot be read or written safely."""
 
 
-State = dict[str, dict[str, Any]]
+State = dict[str, Any]
+
+
+def _normalize_scheduler(raw_scheduler: Any) -> dict[str, Any] | None:
+    """Validate scheduler metadata without weakening notification-state checks."""
+    if raw_scheduler is None:
+        return None
+    if not isinstance(raw_scheduler, dict):
+        raise StateError("state.scheduler must be an object")
+
+    mode = raw_scheduler.get("mode")
+    fingerprint = raw_scheduler.get("fingerprint")
+    next_wake = raw_scheduler.get("next_wake")
+    target = raw_scheduler.get("target")
+    applied_at = raw_scheduler.get("applied_at")
+    if mode not in {"ACTIVE_POLL", "NEXT_WAKE", "HEARTBEAT", "DISABLED"}:
+        raise StateError("state.scheduler.mode is invalid")
+    if not isinstance(fingerprint, str) or not fingerprint:
+        raise StateError("state.scheduler.fingerprint must not be empty")
+    if next_wake is not None and not isinstance(next_wake, str):
+        raise StateError("state.scheduler.next_wake must be a string or null")
+    if not isinstance(target, dict):
+        raise StateError("state.scheduler.target must be an object")
+    if not isinstance(applied_at, str) or not applied_at:
+        raise StateError("state.scheduler.applied_at must not be empty")
+    return {
+        "mode": mode,
+        "fingerprint": fingerprint,
+        "next_wake": next_wake,
+        "target": target,
+        "applied_at": applied_at,
+    }
 
 
 def _season_for(show_id: str, show_seasons: Mapping[int, int] | None) -> int:
@@ -59,6 +90,10 @@ def _normalize_state(raw_state: Any, show_seasons: Mapping[int, int] | None) -> 
                 "notified": dict(notified),
             }
         normalized: State = {"shows": normalized_shows}
+        if "scheduler" in raw_state:
+            scheduler = _normalize_scheduler(raw_state["scheduler"])
+            if scheduler is not None:
+                normalized["scheduler"] = scheduler
         return normalized, raw_state != normalized
 
     migrated_shows: dict[str, dict[str, Any]] = {}
@@ -145,6 +180,8 @@ def save_state(state: State, path: Path = STATE_FILE) -> None:
     """Atomically save state so an interrupted write cannot corrupt it."""
     if not isinstance(state, dict) or not isinstance(state.get("shows"), dict):
         raise StateError("state must use the current shows schema before saving")
+    if "scheduler" in state:
+        _normalize_scheduler(state["scheduler"])
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path: Path | None = None
     try:

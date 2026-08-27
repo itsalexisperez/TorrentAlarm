@@ -9,7 +9,14 @@
 - Added fingerprint-based PATCH minimization and atomic state persistence after successful PATCH only.
 - Added Smart Scheduler reconciliation to the existing external-trigger workflow.
 - Added `scheduler-reconcile.yml` for `shows.json` changes and manual recovery; no GitHub Actions schedule was added.
-- Kept the feature disabled until the required GitHub secret and variables are configured.
+- Kept the feature disabled until the required GitHub secret and variables were configured.
+
+## 2026-08-27 — Fase B
+
+- Confirmed GitHub configuration and verified job `8335122` is titled `TorrentAlarm`.
+- Natural alarm run applied the first `NEXT_WAKE` schedule; subsequent reconciliation made no PATCH because the fingerprint was unchanged.
+- Recorded `NEXT_WAKE` for 2026-09-02 12:00 UTC and observed 15 minutes with no further five-minute alarm runs.
+- No test Telegram message or synthetic notification was sent.
 
 ## Safety notes
 

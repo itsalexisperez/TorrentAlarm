@@ -42,3 +42,15 @@
 - Commits creados: pendiente de crear en esta fase.
 - Runs de GitHub Actions verificados: pendiente del despliegue.
 - Problemas encontrados y resolución: el esquema anterior no contenía temporada, por lo que el runtime pasa el mapa autoritativo desde `shows.json`; las lecturas independientes conservan compatibilidad con temporada 1 para no romper herramientas antiguas.
+
+## Fase 4 — CLI para administrar series
+
+- Fecha/hora UTC: 2026-08-27T05:19:06Z
+- Objetivo: administrar `shows.json` sin editar código Python, secretos ni estado histórico.
+- Archivos creados/modificados: `manage_shows.py`, `tvmaze.py`, `test_manage_shows.py`, `test_tvmaze.py`, `USAGE.md`.
+- Decisiones técnicas: `list`, `add`, `disable` y `enable`; `add` busca y resuelve el nombre canónico en TVMaze, exige `--show-id` si hay ambigüedad, valida la temporada por episodios y escribe configuración atómicamente. No se implementó `remove` para evitar una política accidental de borrado histórico.
+- Comandos relevantes: `.venv/bin/python -m unittest discover -v`; `git diff --check`.
+- Tests y resultados: `57` tests verdes, incluyendo add duplicado, nombre ambiguo, temporada inexistente, configuración inválida, toggle y conservación de `state.json`.
+- Commits creados: pendiente de crear en esta fase.
+- Runs de GitHub Actions verificados: pendiente del despliegue.
+- Problemas encontrados y resolución: el documento de control Telegram se reservó para la fase 7 según el orden requerido.

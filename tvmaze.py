@@ -13,6 +13,7 @@ import requests
 
 TVMAZE_EPISODES_URL = "https://api.tvmaze.com/shows/{show_id}/episodes"
 TVMAZE_SHOW_URL = "https://api.tvmaze.com/shows/{show_id}"
+TVMAZE_SEARCH_URL = "https://api.tvmaze.com/search/shows"
 REQUEST_TIMEOUT = 20
 USER_AGENT = "TorrentAlarm/0.1 (TVMaze episode calendar reader)"
 IMDB_ID_RE = re.compile(r"(?:tt)?(?P<id>[0-9]{7,})$", re.IGNORECASE)
@@ -34,6 +35,12 @@ class Episode:
     @property
     def code(self) -> str:
         return f"S{self.season:02d}E{self.number:02d}"
+
+
+@dataclass(frozen=True)
+class Show:
+    show_id: int
+    name: str
 
 
 def _episode_from_payload(payload: dict[str, Any]) -> Episode:
@@ -115,6 +122,70 @@ def fetch_imdb_id(show_id: int) -> str:
     if match is None:
         raise TVMazeError("TVMaze show returned an invalid IMDb ID")
     return match.group("id")
+
+
+def fetch_show(show_id: int) -> Show:
+    """Fetch canonical show metadata by its stable TVMaze ID."""
+    if show_id <= 0:
+        raise ValueError("show ID must be a positive integer")
+    try:
+        response = requests.get(
+            TVMAZE_SHOW_URL.format(show_id=show_id),
+            headers={"User-Agent": USER_AGENT},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.Timeout as error:
+        raise TVMazeError("TVMaze show request timed out") from error
+    except requests.HTTPError as error:
+        raise TVMazeError(f"TVMaze returned HTTP {response.status_code} for show") from error
+    except requests.RequestException as error:
+        raise TVMazeError("TVMaze show request failed") from error
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise TVMazeError("TVMaze returned invalid show JSON") from error
+    if not isinstance(payload, dict) or not isinstance(payload.get("id"), int):
+        raise TVMazeError("TVMaze returned an invalid show")
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.strip():
+        raise TVMazeError("TVMaze show has no name")
+    return Show(payload["id"], name.strip())
+
+
+def search_shows(query: str) -> list[Show]:
+    """Search TVMaze and return the matching canonical show records."""
+    if not query.strip():
+        raise ValueError("show name must not be empty")
+    try:
+        response = requests.get(
+            TVMAZE_SEARCH_URL,
+            params={"q": query.strip()},
+            headers={"User-Agent": USER_AGENT},
+            timeout=REQUEST_TIMEOUT,
+        )
+        response.raise_for_status()
+    except requests.Timeout as error:
+        raise TVMazeError("TVMaze search timed out") from error
+    except requests.HTTPError as error:
+        raise TVMazeError(f"TVMaze search returned HTTP {response.status_code}") from error
+    except requests.RequestException as error:
+        raise TVMazeError("TVMaze search failed") from error
+    try:
+        payload = response.json()
+    except ValueError as error:
+        raise TVMazeError("TVMaze returned invalid search JSON") from error
+    if not isinstance(payload, list):
+        raise TVMazeError("TVMaze returned an invalid search result")
+
+    results: list[Show] = []
+    for item in payload:
+        if not isinstance(item, dict) or not isinstance(item.get("show"), dict):
+            continue
+        show = item["show"]
+        if isinstance(show.get("id"), int) and isinstance(show.get("name"), str):
+            results.append(Show(show["id"], show["name"].strip()))
+    return results
 
 
 def _parse_airstamp(value: str) -> datetime | None:

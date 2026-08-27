@@ -16,3 +16,15 @@
 - Runs de GitHub Actions verificados: no aplica en baseline; aún no hubo despliegue.
 - Problemas encontrados y resolución: no hubo fallos bloqueantes; el paquete de instrucciones no rastreado quedó fuera del alcance de cambios.
 
+## Fase 2 — configuración multi-serie
+
+- Fecha/hora UTC: 2026-08-27T05:17:20Z
+- Objetivo: eliminar la serie única hardcodeada del motor programado y procesar todas las series habilitadas desde configuración.
+- Archivos creados/modificados: `shows.py`, `shows.json`, `alarm_once.py`, `tvmaze.py`, `state.py`, `state.json`, `test_shows.py`, `test_state.py`.
+- Decisiones técnicas: `shows.json` usa registros simples `{show_id, name, season, enabled}`; `shows.py` valida tipos, valores positivos y IDs únicos; `alarm_once.py` procesa cada show de forma independiente, resuelve IMDb una vez por serie con episodios pendientes y reutiliza la ventana de 12 horas basada exclusivamente en `airstamp`.
+- Compatibilidad: `watcher.py` no fue modificado; el workflow mantiene una única llamada a `alarm_once.py`.
+- Comandos relevantes: `.venv/bin/python -m unittest discover -v`; `.venv/bin/python -m compileall -q .`; `git diff --check`; escaneo estático de secretos, magnets, enlaces de descarga y días hardcodeados.
+- Tests y resultados: `53` tests verdes; no hubo llamadas reales a TVMaze, EZTV o Telegram.
+- Commits creados: pendiente de crear en esta fase.
+- Runs de GitHub Actions verificados: pendiente del despliegue.
+- Problemas encontrados y resolución: los tests heredados esperaban el estado plano; se actualizaron al esquema versionado sin perder la cobertura de deduplicación y fallo de Telegram.

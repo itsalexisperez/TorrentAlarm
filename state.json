@@ -13,5 +13,44 @@
       "completed": false,
       "notified": {}
     }
+  },
+  "scheduler": {
+    "mode": "NEXT_WAKE",
+    "fingerprint": "80d2623ef8f67b4bb85b199411f1607a73fe5b411c3d61e8851d67bb8f84c976",
+    "next_wake": "2026-09-02T12:00:00+00:00",
+    "target": {
+      "enabled": true,
+      "schedule": {
+        "timezone": "UTC",
+        "expiresAt": 20260903001500,
+        "hours": [
+          12
+        ],
+        "mdays": [
+          2
+        ],
+        "minutes": [
+          0,
+          5,
+          10,
+          15,
+          20,
+          25,
+          30,
+          35,
+          40,
+          45,
+          50,
+          55
+        ],
+        "months": [
+          9
+        ],
+        "wdays": [
+          -1
+        ]
+      }
+    },
+    "applied_at": "2026-08-27T19:55:23.602912+00:00"
   }
 }

@@ -54,3 +54,16 @@
 - Commits creados: pendiente de crear en esta fase.
 - Runs de GitHub Actions verificados: pendiente del despliegue.
 - Problemas encontrados y resolución: el documento de control Telegram se reservó para la fase 7 según el orden requerido.
+
+## Fase 5 — suite completa, invariantes y documentación
+
+- Fecha/hora UTC: 2026-08-27T05:19:44Z
+- Objetivo: validar la refactorización completa y dejar documentada la operación segura.
+- Archivos creados/modificados: `USAGE.md`, `test_shows.py`, `test_manage_shows.py`, `test_state.py`, `test_tvmaze.py` y módulos del runtime ya descritos en fases anteriores.
+- Decisiones técnicas: mantener el workflow en `workflow_dispatch`, conservar `concurrency` y limitar el commit automático a `state.json`; no se añadieron llamadas reales a integraciones en la suite.
+- Invariantes inspeccionadas: ventana de 12 horas; deduplicación; marca posterior a Telegram exitoso; pendiente tras fallo; aislamiento entre series; omisión EZTV para completion; EZTV `eztv.wf` primario y `eztv.tf` solo ante error técnico; respuesta válida sin episodio no activa fallback; ausencia de uso productivo de EXTTO, magnets, URLs de descarga o hashes.
+- Comandos relevantes: `.venv/bin/python -m unittest discover -v`; `.venv/bin/python -m compileall -q .`; `git diff --check`; revisión de `.github/workflows/torrent-alarm.yml`; `python manage_shows.py list`.
+- Tests y resultados: `57` tests verdes con Python `3.14.6`; configuración validada y CLI lista mostró ambas series habilitadas.
+- Commits creados: pendiente de crear en esta fase.
+- Runs de GitHub Actions verificados: pendiente de integración; no se usó `gh workflow run`.
+- Problemas encontrados y resolución: ninguno bloqueante. El paquete de instrucciones no rastreado se conserva fuera de los commits del producto.

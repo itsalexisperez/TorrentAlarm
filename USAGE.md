@@ -2,7 +2,7 @@
 
 ## Arquitectura
 
-El workflow `workflow_dispatch` ejecuta una sola vez `alarm_once.py`. En cada ejecución, el motor carga `shows.json`, consulta TVMaze para cada serie habilitada y filtra la temporada configurada usando `airstamp` y una ventana activa de 12 horas. Después consulta EZTV y envía Telegram solo para episodios exactos aún no notificados. `watcher.py` queda reservado para uso local/manual.
+El workflow `workflow_dispatch` ejecuta una sola vez `alarm_once.py`. En cada ejecución, el motor carga `shows.json`, consulta TVMaze para cada serie habilitada y filtra la temporada configurada usando `airstamp`. Vigila normalmente durante 12 horas y conserva una ventana de recuperación de 48 horas para episodios aún no notificados. Después consulta EZTV y, si EZTV falla o todavía no indexó el episodio, usa EXTTO como fuente alternativa. Solo marca un episodio como enviado después de que Telegram lo acepta. `watcher.py` queda reservado para uso local/manual.
 
 El scheduler externo (cron-job.org) es quien dispara el workflow cada cinco minutos. No se programa por martes, miércoles ni otro día de la semana: TVMaze es la fuente de verdad temporal.
 
@@ -72,7 +72,7 @@ python manage_shows.py enable "The Shards"
 
 ## Recuperación y mantenimiento
 
-- Un error de TVMaze, EZTV o Telegram queda aislado a la serie o episodio afectado y la siguiente ejecución puede reintentarlo.
+- Un error de TVMaze, EZTV, EXTTO o Telegram queda aislado a la serie o episodio afectado y la siguiente ejecución puede reintentarlo durante la ventana de recuperación.
 - Un fallo de Telegram no marca el episodio como enviado.
 - El workflow conserva `concurrency` para evitar ejecuciones solapadas y solo permite que el commit automático agregue `state.json`.
 - Para añadir una serie nueva, usar `manage_shows.py add`, revisar el diff de `shows.json` y publicar ese cambio normalmente; no crear otro workflow ni hardcodear días.

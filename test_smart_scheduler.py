@@ -92,8 +92,13 @@ class SchedulerDecisionTests(unittest.TestCase):
         decision = decide(at_last_second, [show()], {68193: [current]}, {"shows": {}})
         self.assertEqual(decision.mode, "ACTIVE_POLL")
 
-    def test_at_twelve_hours_is_not_active(self) -> None:
+    def test_after_twelve_hours_stays_in_recovery_poll(self) -> None:
         ended = episode(8, "2026-08-26T13:05:00+00:00")
+        decision = decide(NOW, [show()], {68193: [ended]}, {"shows": {}})
+        self.assertEqual(decision.mode, "ACTIVE_POLL")
+
+    def test_after_recovery_window_is_not_pending(self) -> None:
+        ended = episode(8, "2026-08-25T01:05:00+00:00")
         decision = decide(NOW, [show()], {68193: [ended]}, {"shows": {}})
         self.assertEqual(decision.mode, "HEARTBEAT")
 
@@ -125,7 +130,7 @@ class SchedulerDecisionTests(unittest.TestCase):
     def test_expiration_is_after_active_window(self) -> None:
         current = episode(8, "2026-08-27T01:00:00+00:00")
         decision = decide(NOW, [show()], {68193: [current]}, {"shows": {}})
-        self.assertEqual(decision.target["schedule"]["expiresAt"], 20260827131500)
+        self.assertEqual(decision.target["schedule"]["expiresAt"], 20260829011500)
 
     def test_month_and_year_boundaries_are_encoded(self) -> None:
         future = episode(8, "2027-01-01T00:00:30+00:00")

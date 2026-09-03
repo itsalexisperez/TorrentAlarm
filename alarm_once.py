@@ -8,6 +8,7 @@ from pathlib import Path
 
 import requests
 
+from check_extto import check_episode as check_extto_episode
 from check_eztv import EZTVError, check_episode
 from shows import SHOWS_FILE, ShowConfig, ShowsConfigError, load_shows
 from state import (
@@ -27,6 +28,10 @@ from tvmaze import Episode, TVMazeError, fetch_episodes, fetch_imdb_id
 
 ACTIVE_WINDOW_HOURS = 12
 ACTIVE_WINDOW = timedelta(hours=ACTIVE_WINDOW_HOURS)
+# Keep an unnotified episode recoverable after the premiere window. This
+# covers delayed indexing and temporary provider failures.
+RECOVERY_WINDOW_HOURS = 48
+RECOVERY_WINDOW = timedelta(hours=RECOVERY_WINDOW_HOURS)
 STATE_FILE = Path(__file__).with_name("state.json")
 
 
@@ -60,6 +65,17 @@ def is_active(
         return False
     current = now.astimezone(premiere.tzinfo)
     return premiere <= current < premiere + ACTIVE_WINDOW
+
+
+def is_recoverable(
+    episode: Episode, now: datetime, release_offset_minutes: int = 0
+) -> bool:
+    """Return whether an aired episode is still eligible for recovery checks."""
+    premiere = effective_airstamp(episode.airstamp, release_offset_minutes)
+    if premiere is None:
+        return False
+    current = now.astimezone(premiere.tzinfo)
+    return premiere <= current < premiere + RECOVERY_WINDOW
 
 
 def is_season_completed(
@@ -98,6 +114,30 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _show_seasons(shows: list[ShowConfig]) -> dict[int, int]:
     return {show.show_id: show.season for show in shows}
+
+
+def find_episode_torrent(
+    show: ShowConfig, episode: Episode, imdb_id: str | None
+) -> str | None:
+    """Find a torrent through EZTV, falling back to EXTTO when needed."""
+    eztv_error: EZTVError | requests.RequestException | None = None
+    try:
+        title = check_episode(show.name, episode.code, imdb_id)
+    except (EZTVError, requests.RequestException) as error:
+        eztv_error = error
+        title = None
+
+    if title is not None:
+        return title
+
+    try:
+        return check_extto_episode(show.name, episode.code)
+    except requests.RequestException as error:
+        if eztv_error is not None:
+            raise EZTVError(
+                f"EZTV unavailable and EXTTO request failed: {eztv_error}"
+            ) from error
+        raise
 
 
 def run_once(
@@ -139,15 +179,15 @@ def run_once(
             print(f"SKIPPED_COMPLETED: {show.name}")
             continue
 
-        active_episodes = [
+        candidate_episodes = [
             episode
             for episode in episodes
             if episode.season == show.season
-            and is_active(episode, now, show.release_offset_minutes)
+            and is_recoverable(episode, now, show.release_offset_minutes)
         ]
         pending_episodes = [
             episode
-            for episode in active_episodes
+            for episode in candidate_episodes
             if not is_notified(state, show.show_id, episode.code)
         ]
         imdb_id: str | None = None
@@ -160,13 +200,13 @@ def run_once(
                 had_errors = True
                 continue
 
-        for episode in active_episodes:
+        for episode in candidate_episodes:
             if is_notified(state, show.show_id, episode.code):
                 print(f"SKIPPED_ALREADY_NOTIFIED: {show.name} {episode.code}")
                 continue
 
             try:
-                title = check_episode(show.name, episode.code, imdb_id)
+                title = find_episode_torrent(show, episode, imdb_id)
             except (EZTVError, requests.RequestException) as error:
                 description = str(error).splitlines()[0].strip() or error.__class__.__name__
                 print(f"ERROR: {show.name} {episode.code} | EZTV | {description[:240]}")
@@ -193,8 +233,15 @@ def run_once(
             mark_notified(state, show.show_id, episode.code)
             state_changed = True
 
+        has_recoverable_pending = any(
+            episode.season == show.season
+            and is_recoverable(episode, now, show.release_offset_minutes)
+            and not is_notified(state, show.show_id, episode.code)
+            for episode in episodes
+        )
         if (
             is_season_completed(episodes, show.season, now, show.release_offset_minutes)
+            and not has_recoverable_pending
             and not dry_run
         ):
             state_changed = set_completed(state, show.show_id, show.season, True) or state_changed

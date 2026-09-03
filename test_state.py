@@ -69,6 +69,11 @@ class StateTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertEqual(alarm_once.is_active(episode(1, 6), now), expected)
 
+    def test_unnotified_episode_is_recoverable_after_active_window(self) -> None:
+        premiere = datetime(2026, 8, 27, 1, 0, tzinfo=timezone.utc)
+        self.assertFalse(alarm_once.is_active(episode(1, 6), premiere + timedelta(hours=13)))
+        self.assertTrue(alarm_once.is_recoverable(episode(1, 6), premiere + timedelta(hours=13)))
+
     def test_missing_state_starts_empty_current_schema(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             self.assertEqual(load_state(Path(directory) / "state.json"), {"shows": {}})
@@ -149,6 +154,40 @@ class StateTests(unittest.TestCase):
             ):
                 result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
             self.assertEqual(result, 0)
+            self.assertTrue(is_notified(load_state(state_path), 68193, "S01E06"))
+
+    def test_provider_fallback_notifies_after_eztv_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            shows_path = Path(directory) / "shows.json"
+            write_shows(shows_path, ShowConfig(68193, "The Shards", 1))
+            with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
+                alarm_once, "check_episode", side_effect=alarm_once.EZTVError("HTTP 451")
+            ), patch.object(
+                alarm_once, "check_extto_episode", return_value="The Shards S01E06 EXTTO"
+            ), patch.object(alarm_once, "send_message", return_value={}):
+                result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
+            self.assertEqual(result, 0)
+            self.assertTrue(is_notified(load_state(state_path), 68193, "S01E06"))
+
+    def test_recovery_window_checks_an_episode_after_twelve_hours(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            shows_path = Path(directory) / "shows.json"
+            write_shows(shows_path, ShowConfig(68193, "The Shards", 1))
+            aired = episode(1, 6, "2026-08-26T11:00:00+00:00")
+            with patch.object(alarm_once, "fetch_episodes", return_value=[aired]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
+                alarm_once, "check_episode", return_value="The Shards S01E06"
+            ), patch.object(alarm_once, "check_extto_episode") as fallback, patch.object(
+                alarm_once, "send_message", return_value={}
+            ):
+                result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
+            self.assertEqual(result, 0)
+            fallback.assert_not_called()
             self.assertTrue(is_notified(load_state(state_path), 68193, "S01E06"))
 
     def test_dry_run_does_not_modify_state(self) -> None:

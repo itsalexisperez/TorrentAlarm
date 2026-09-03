@@ -123,8 +123,8 @@ class SchedulerOffsetTests(unittest.TestCase):
             datetime(2026, 9, 2, 1, tzinfo=UTC), [show], {44458: [episode()]}, {"shows": {}},
         )
         self.assertEqual(decision.mode, "ACTIVE_POLL")
-        self.assertEqual(decision.active_until, datetime(2026, 9, 2, 13, tzinfo=UTC))
-        self.assertEqual(decision.target["schedule"]["expiresAt"], 20260902131500)
+        self.assertEqual(decision.active_until, datetime(2026, 9, 4, 1, tzinfo=UTC))
+        self.assertEqual(decision.target["schedule"]["expiresAt"], 20260904011500)
 
     def test_offset_is_part_of_fingerprint_even_without_known_episodes(self) -> None:
         now = datetime(2026, 9, 1, tzinfo=UTC)

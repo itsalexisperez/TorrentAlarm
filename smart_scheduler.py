@@ -15,6 +15,9 @@ from tvmaze import Episode
 
 
 ACTIVE_WINDOW = timedelta(hours=12)
+# Match alarm_once.py so the scheduler keeps retrying recently aired,
+# unnotified episodes after the normal premiere window.
+RECOVERY_WINDOW = timedelta(hours=48)
 ACTIVE_EXPIRES_MARGIN = timedelta(minutes=15)
 HEARTBEAT_MINUTE = 17
 POLL_MINUTES = list(range(0, 60, 5))
@@ -176,15 +179,15 @@ def decide(
             if premiere > current:
                 future.append(premiere)
                 continue
-            if premiere <= current < premiere + ACTIVE_WINDOW:
-                active_until = max(active_until, premiere + ACTIVE_WINDOW) if active_until else premiere + ACTIVE_WINDOW
+            if premiere <= current < premiere + RECOVERY_WINDOW:
+                active_until = max(active_until, premiere + RECOVERY_WINDOW) if active_until else premiere + RECOVERY_WINDOW
                 if not is_notified(state, show.show_id, episode.code):
                     pending.append(EpisodeRef(show.show_id, episode.code, premiere))
 
     if pending:
         mode = "ACTIVE_POLL"
         next_wake = None
-        reason = f"{len(pending)} active episode(s) pending notification"
+        reason = f"{len(pending)} episode(s) pending notification (active/recovery window)"
     elif future:
         mode = "NEXT_WAKE"
         next_wake = _ceil_minute(min(future))

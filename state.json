@@ -13,24 +13,25 @@
       "season": 4,
       "completed": false,
       "notified": {
-        "S04E05": true
+        "S04E05": true,
+        "S04E06": true
       }
     }
   },
   "scheduler": {
-    "mode": "ACTIVE_POLL",
-    "fingerprint": "2e7afdaf2421700e011c763ccb41a82a659507a2fa9e56d871c68a2561f69a79",
-    "next_wake": null,
+    "mode": "NEXT_WAKE",
+    "fingerprint": "9417af88cf05ecd26074bdc05acbfc4d42c16d22f48760441a3f7a981a74445d",
+    "next_wake": "2026-09-09T16:00:00+00:00",
     "target": {
       "enabled": true,
       "schedule": {
         "timezone": "UTC",
-        "expiresAt": 20260911011500,
+        "expiresAt": 20260910041500,
         "hours": [
-          -1
+          16
         ],
         "mdays": [
-          -1
+          9
         ],
         "minutes": [
           0,
@@ -47,14 +48,14 @@
           55
         ],
         "months": [
-          -1
+          9
         ],
         "wdays": [
           -1
         ]
       }
     },
-    "applied_at": "2026-09-09T01:01:31.557906+00:00"
+    "applied_at": "2026-09-09T01:35:47.137606+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

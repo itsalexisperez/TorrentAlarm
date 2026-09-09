@@ -33,6 +33,11 @@ ACTIVE_WINDOW = timedelta(hours=ACTIVE_WINDOW_HOURS)
 RECOVERY_WINDOW_HOURS = 48
 RECOVERY_WINDOW = timedelta(hours=RECOVERY_WINDOW_HOURS)
 STATE_FILE = Path(__file__).with_name("state.json")
+RETRYABLE_PROVIDER_EXIT_CODE = 2
+
+
+class TorrentProviderUnavailable(RuntimeError):
+    """Raised when every torrent source is temporarily unavailable."""
 
 
 def notification_message(show: ShowConfig, episode: Episode, title: str) -> str:
@@ -116,6 +121,17 @@ def _show_seasons(shows: list[ShowConfig]) -> dict[int, int]:
     return {show.show_id: show.season for show in shows}
 
 
+def _provider_error_description(error: requests.RequestException) -> str:
+    """Return a short, secret-safe description for a provider failure."""
+    response = getattr(error, "response", None)
+    status_code = getattr(response, "status_code", None)
+    if isinstance(status_code, int):
+        return f"HTTP {status_code}"
+    if isinstance(error, requests.Timeout):
+        return "timeout"
+    return "request failed"
+
+
 def find_episode_torrent(
     show: ShowConfig, episode: Episode, imdb_id: str | None
 ) -> str | None:
@@ -131,13 +147,22 @@ def find_episode_torrent(
         return title
 
     try:
-        return check_extto_episode(show.name, episode.code)
+        fallback_title = check_extto_episode(show.name, episode.code)
     except requests.RequestException as error:
+        provider_description = _provider_error_description(error)
         if eztv_error is not None:
-            raise EZTVError(
-                f"EZTV unavailable and EXTTO request failed: {eztv_error}"
+            raise TorrentProviderUnavailable(
+                f"EZTV unavailable; EXTTO unavailable ({provider_description})"
             ) from error
-        raise
+        raise TorrentProviderUnavailable(
+            f"EXTTO unavailable ({provider_description})"
+        ) from error
+
+    if fallback_title is None and eztv_error is not None:
+        raise TorrentProviderUnavailable(
+            "EZTV unavailable; EXTTO returned no exact torrent"
+        ) from eztv_error
+    return fallback_title
 
 
 def run_once(
@@ -150,6 +175,7 @@ def run_once(
     state, migrated = load_state_with_migration(state_path, _show_seasons(shows))
     state_changed = migrated and not dry_run
     had_errors = False
+    had_retryable_provider_errors = False
 
     for show in shows:
         if not show.enabled:
@@ -207,6 +233,12 @@ def run_once(
 
             try:
                 title = find_episode_torrent(show, episode, imdb_id)
+            except TorrentProviderUnavailable as error:
+                print(
+                    f"WARNING: {show.name} {episode.code} | torrent provider unavailable | {error}"
+                )
+                had_retryable_provider_errors = True
+                continue
             except (EZTVError, requests.RequestException) as error:
                 description = str(error).splitlines()[0].strip() or error.__class__.__name__
                 print(f"ERROR: {show.name} {episode.code} | EZTV | {description[:240]}")
@@ -250,7 +282,11 @@ def run_once(
     if state_changed and not dry_run:
         save_state(state, state_path)
 
-    return 1 if had_errors else 0
+    if had_errors:
+        return 1
+    if had_retryable_provider_errors:
+        return RETRYABLE_PROVIDER_EXIT_CODE
+    return 0
 
 
 def main() -> int:

@@ -12,6 +12,7 @@ import unittest
 from unittest.mock import patch
 
 import alarm_once
+import requests
 from shows import ShowConfig
 from state import (
     ensure_show,
@@ -171,6 +172,45 @@ class StateTests(unittest.TestCase):
                 result = alarm_once.run_once(NOW, state_path=state_path, shows_path=shows_path)
             self.assertEqual(result, 0)
             self.assertTrue(is_notified(load_state(state_path), 68193, "S01E06"))
+
+    def test_provider_access_denial_is_retryable_and_keeps_episode_pending(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            shows_path = Path(directory) / "shows.json"
+            write_shows(shows_path, ShowConfig(68193, "The Shards", 1))
+            response = requests.Response()
+            response.status_code = 403
+            response.url = "https://extto.com/browse/?q=The+Shards+S01E06"
+            provider_error = requests.HTTPError("403 Client Error", response=response)
+            with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(alarm_once, "check_episode", return_value=None), patch.object(
+                alarm_once, "check_extto_episode", side_effect=provider_error
+            ), patch.object(alarm_once, "send_message") as send:
+                result = alarm_once.run_once(
+                    NOW, state_path=state_path, shows_path=shows_path
+                )
+
+            self.assertEqual(result, alarm_once.RETRYABLE_PROVIDER_EXIT_CODE)
+            self.assertFalse(is_notified(load_state(state_path), 68193, "S01E06"))
+            send.assert_not_called()
+
+    def test_eztv_outage_with_empty_fallback_is_retryable(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            state_path = Path(directory) / "state.json"
+            shows_path = Path(directory) / "shows.json"
+            write_shows(shows_path, ShowConfig(68193, "The Shards", 1))
+            with patch.object(alarm_once, "fetch_episodes", return_value=[episode(1, 6)]), patch.object(
+                alarm_once, "fetch_imdb_id", return_value="27543562"
+            ), patch.object(
+                alarm_once, "check_episode", side_effect=alarm_once.EZTVError("all mirrors failed")
+            ), patch.object(alarm_once, "check_extto_episode", return_value=None):
+                result = alarm_once.run_once(
+                    NOW, state_path=state_path, shows_path=shows_path
+                )
+
+            self.assertEqual(result, alarm_once.RETRYABLE_PROVIDER_EXIT_CODE)
+            self.assertFalse(is_notified(load_state(state_path), 68193, "S01E06"))
 
     def test_recovery_window_checks_an_episode_after_twelve_hours(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -72,7 +72,7 @@ python manage_shows.py enable "The Shards"
 
 ## Recuperación y mantenimiento
 
-- Un error de TVMaze, EZTV, EXTTO o Telegram queda aislado a la serie o episodio afectado y la siguiente ejecución puede reintentarlo durante la ventana de recuperación.
+- Un error de TVMaze, EZTV, EXTTO o Telegram queda aislado a la serie o episodio afectado y la siguiente ejecución puede reintentarlo durante la ventana de recuperación. Si todos los proveedores de torrents están temporalmente indisponibles, `alarm_once.py` devuelve el código recuperable `2`; GitHub Actions lo muestra como advertencia y conserva el episodio pendiente, sin convertir una caída externa en un falso fallo del workflow.
 - Un fallo de Telegram no marca el episodio como enviado.
 - El workflow conserva `concurrency` para evitar ejecuciones solapadas y solo permite que el commit automático agregue `state.json`.
 - Para añadir una serie nueva, usar `manage_shows.py add`, revisar el diff de `shows.json` y publicar ese cambio normalmente; no crear otro workflow ni hardcodear días.

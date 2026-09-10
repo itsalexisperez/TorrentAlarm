@@ -2,11 +2,12 @@
   "shows": {
     "68193": {
       "season": 1,
-      "completed": false,
+      "completed": true,
       "notified": {
         "S01E06": true,
         "S01E07": true,
-        "S01E08": true
+        "S01E08": true,
+        "S01E09": true
       }
     },
     "44458": {
@@ -19,19 +20,19 @@
     }
   },
   "scheduler": {
-    "mode": "ACTIVE_POLL",
-    "fingerprint": "9fc80d78d9ce054b929aed9c92d796202d84eeaf164568fddf9a8c2e08835db4",
-    "next_wake": null,
+    "mode": "NEXT_WAKE",
+    "fingerprint": "065e4155f7b0bdc8dd69a1deee711a9a328f5b16e08adb4374e42d9fa5415678",
+    "next_wake": "2026-09-16T01:00:00+00:00",
     "target": {
       "enabled": true,
       "schedule": {
         "timezone": "UTC",
-        "expiresAt": 20260911161500,
+        "expiresAt": 20260916131500,
         "hours": [
-          -1
+          1
         ],
         "mdays": [
-          -1
+          16
         ],
         "minutes": [
           0,
@@ -48,14 +49,14 @@
           55
         ],
         "months": [
-          -1
+          9
         ],
         "wdays": [
           -1
         ]
       }
     },
-    "applied_at": "2026-09-09T16:01:33.646149+00:00"
+    "applied_at": "2026-09-10T04:25:45.989308+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

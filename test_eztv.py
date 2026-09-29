@@ -49,7 +49,7 @@ class EZTVTests(unittest.TestCase):
 
         self.assertEqual(result, expected)
         self.assertEqual(get.call_count, 1)
-        self.assertEqual(get.call_args.args[0], check_eztv.EZTV_API_URL)
+        self.assertEqual(get.call_args_list[0].args[0], check_eztv.EZTV_API_URL)
         self.assertEqual(get.call_args.kwargs["params"]["imdb_id"], "27543562")
 
     def test_primary_403_uses_fallback(self) -> None:
@@ -137,7 +137,7 @@ class EZTVTests(unittest.TestCase):
 
         self.assertEqual(get.call_count, 2)
 
-    def test_primary_valid_without_episode_does_not_use_fallback(self) -> None:
+    def test_recent_fallback_checks_current_catalog(self) -> None:
         with patch.object(
             check_eztv.requests,
             "get",
@@ -146,8 +146,25 @@ class EZTVTests(unittest.TestCase):
             result = check_eztv.check_episode("The Shards", "S01E06", "27543562")
 
         self.assertIsNone(result)
-        self.assertEqual(get.call_count, 1)
-        self.assertEqual(get.call_args.args[0], check_eztv.EZTV_API_URL)
+        self.assertEqual(get.call_count, 4)
+        self.assertEqual(get.call_args_list[0].args[0], check_eztv.EZTV_API_URL)
+
+    def test_recent_global_fallback_handles_provider_imdb_mismatch(self) -> None:
+        expected = "Line of Fire 2026 S01E02 1080p HDTV x264-SYNCOPY EZTV"
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            side_effect=[
+                FakeResponse(payload={"imdb_id": "42496001", "torrents_count": 0}),
+                response_for(torrent(expected, episode=2), imdb_id=None),
+            ],
+        ) as get:
+            result = check_eztv.check_episode("Line of Fire", "S01E02", "42496001")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(get.call_args_list[0].kwargs["params"]["imdb_id"], "42496001")
+        self.assertNotIn("imdb_id", get.call_args_list[1].kwargs["params"])
 
     def test_nonexistent_episode_returns_none(self) -> None:
         with patch.object(

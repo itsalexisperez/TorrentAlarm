@@ -8,8 +8,8 @@ from typing import Any
 import requests
 
 
-EZTV_API_URL = "https://eztvx.to/api/get-torrents"
-EZTV_FALLBACK_API_URL = "https://eztv.re/api/get-torrents"
+EZTV_API_URL = "https://eztv.yt/api/get-torrents"
+EZTV_FALLBACK_API_URL = "https://eztv1.xyz/api/get-torrents"
 EZTV_API_URLS = (EZTV_API_URL, EZTV_FALLBACK_API_URL)
 REQUEST_TIMEOUT = 20
 DEFAULT_LIMIT = 100

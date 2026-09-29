@@ -19,6 +19,16 @@
         "S04E07": true,
         "S04E08": true
       }
+    },
+    "90632": {
+      "season": 1,
+      "completed": false,
+      "notified": {}
+    },
+    "51945": {
+      "season": 6,
+      "completed": false,
+      "notified": {}
     }
   },
   "scheduler": {

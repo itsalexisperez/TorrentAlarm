@@ -23,7 +23,9 @@
     "90632": {
       "season": 1,
       "completed": false,
-      "notified": {}
+      "notified": {
+        "S01E02": true
+      }
     },
     "51945": {
       "season": 6,

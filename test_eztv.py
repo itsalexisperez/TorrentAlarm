@@ -130,12 +130,16 @@ class EZTVTests(unittest.TestCase):
         with patch.object(
             check_eztv.requests,
             "get",
-            side_effect=[FakeResponse(status_code=403), FakeResponse(status_code=500)],
+            side_effect=[
+                FakeResponse(status_code=403),
+                FakeResponse(status_code=500),
+                FakeResponse(status_code=522),
+            ],
         ) as get:
             with self.assertRaisesRegex(check_eztv.EZTVError, "all EZTV mirrors failed"):
                 check_eztv.check_episode("The Shards", "S01E06", "27543562")
 
-        self.assertEqual(get.call_count, 2)
+        self.assertEqual(get.call_count, 3)
 
     def test_recent_fallback_checks_current_catalog(self) -> None:
         with patch.object(

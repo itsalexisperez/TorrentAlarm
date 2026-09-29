@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import re
 from typing import Any
 
@@ -11,6 +12,7 @@ import requests
 EZTV_API_URL = "https://eztv.yt/api/get-torrents"
 EZTV_FALLBACK_API_URL = "https://eztv1.xyz/api/get-torrents"
 EZTV_API_URLS = (EZTV_API_URL, EZTV_FALLBACK_API_URL)
+EZTV_PROXY_API_URL = "https://r.jina.ai/http://eztv.yt/api/get-torrents"
 REQUEST_TIMEOUT = 20
 DEFAULT_LIMIT = 100
 RECENT_FALLBACK_PAGES = 3
@@ -131,7 +133,16 @@ def _fetch_page(endpoint: str, imdb_id: str | None, page: int) -> dict[str, Any]
     try:
         payload = response.json()
     except ValueError as error:
-        raise EZTVError("EZTV returned invalid JSON") from error
+        if endpoint != EZTV_PROXY_API_URL:
+            raise EZTVError("EZTV returned invalid JSON") from error
+        marker = "Markdown Content:\n"
+        response_text = getattr(response, "text", "")
+        if marker not in response_text:
+            raise EZTVError("EZTV proxy returned invalid JSON") from error
+        try:
+            payload = json.loads(response_text.split(marker, 1)[1])
+        except (ValueError, TypeError) as proxy_error:
+            raise EZTVError("EZTV proxy returned invalid JSON") from proxy_error
 
     if not isinstance(payload, dict):
         raise EZTVError("EZTV returned an unexpected JSON object")
@@ -224,6 +235,22 @@ def check_episode(
             # keep the strict series/episode title validation above.
             title = _check_endpoint(
                 endpoint,
+                show_name,
+                episode_code,
+                None,
+                season,
+                episode,
+                max_pages=RECENT_FALLBACK_PAGES,
+            )
+            if title is not None:
+                return title
+        except EZTVError as error:
+            last_error = error
+
+    if last_error is not None:
+        try:
+            title = _check_endpoint(
+                EZTV_PROXY_API_URL,
                 show_name,
                 episode_code,
                 None,

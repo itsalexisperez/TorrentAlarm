@@ -13,6 +13,13 @@
       "season": 4,
       "enabled": true,
       "release_offset_minutes": -660
+    },
+    {
+      "show_id": 90632,
+      "name": "Line of Fire",
+      "season": 1,
+      "enabled": true,
+      "release_offset_minutes": 0
     }
   ]
 }

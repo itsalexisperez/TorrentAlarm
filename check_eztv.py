@@ -14,6 +14,7 @@ EZTV_API_URLS = (EZTV_API_URL, EZTV_FALLBACK_API_URL)
 REQUEST_TIMEOUT = 20
 DEFAULT_LIMIT = 100
 RECENT_FALLBACK_PAGES = 3
+USER_AGENT = "TorrentAlarm/0.1 (read-only episode availability checker)"
 
 EPISODE_INPUT_RE = re.compile(
     r"^S(?P<season>[0-9]{2})E(?P<episode>[0-9]{2})$", re.IGNORECASE
@@ -116,6 +117,7 @@ def _fetch_page(endpoint: str, imdb_id: str | None, page: int) -> dict[str, Any]
         response = requests.get(
             endpoint,
             params=params,
+            headers={"User-Agent": USER_AGENT},
             timeout=REQUEST_TIMEOUT,
         )
     except requests.Timeout as error:

@@ -20,6 +20,13 @@
       "season": 1,
       "enabled": true,
       "release_offset_minutes": 0
+    },
+    {
+      "show_id": 51945,
+      "name": "Drag Race España",
+      "season": 6,
+      "enabled": true,
+      "release_offset_minutes": 0
     }
   ]
 }

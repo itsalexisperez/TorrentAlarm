@@ -34,19 +34,19 @@
     }
   },
   "scheduler": {
-    "mode": "NEXT_WAKE",
-    "fingerprint": "a33d67a78af2dc7e12d52d389d8e59baf9ea437a88678ca63cfecc49d95f4815",
-    "next_wake": "2026-09-30T01:00:00+00:00",
+    "mode": "ACTIVE_POLL",
+    "fingerprint": "8c81bf95d7d3bab93392851b3e72a461bff107d88b78e6a6f4a80a1eb0bfcbdc",
+    "next_wake": null,
     "target": {
       "enabled": true,
       "schedule": {
         "timezone": "UTC",
-        "expiresAt": 20260930131500,
+        "expiresAt": 20261002011500,
         "hours": [
-          1
+          -1
         ],
         "mdays": [
-          30
+          -1
         ],
         "minutes": [
           0,
@@ -63,14 +63,14 @@
           55
         ],
         "months": [
-          9
+          -1
         ],
         "wdays": [
           -1
         ]
       }
     },
-    "applied_at": "2026-09-29T18:01:32.838291+00:00"
+    "applied_at": "2026-09-30T01:01:34.586423+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

@@ -33,6 +33,18 @@
       "season": 6,
       "completed": false,
       "notified": {}
+    },
+    "61704": {
+      "season": 4,
+      "completed": false,
+      "notified": {}
+    },
+    "82211": {
+      "season": 2,
+      "completed": false,
+      "notified": {
+        "S02E01": true
+      }
     }
   },
   "scheduler": {

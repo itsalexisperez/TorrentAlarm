@@ -11,7 +11,15 @@ from bs4 import BeautifulSoup
 
 
 EXTTO_SEARCH_URL = "https://extto.com/browse/"
-EXTTO_SEARCH_URLS = ("https://ext.to/browse/", EXTTO_SEARCH_URL)
+EXTTO_SEARCH_URLS = (
+    "https://ext.to/browse/",
+    "https://t.extto.com/browse/",
+    EXTTO_SEARCH_URL,
+)
+EXTTO_PROXY_SEARCH_URLS = (
+    "https://r.jina.ai/http://ext.to/browse/",
+    "https://r.jina.ai/http://t.extto.com/browse/",
+)
 REQUEST_TIMEOUT = 20
 USER_AGENT = "TorrentAlarm/0.1 (read-only episode availability checker)"
 
@@ -97,10 +105,27 @@ def find_first_valid_title(html: str, series_name: str, episode: str) -> str | N
     return None
 
 
+def find_first_valid_markdown_title(
+    markdown: str, series_name: str, episode: str
+) -> str | None:
+    """Extract an exact title from a proxy's Markdown table response."""
+    for line in markdown.splitlines():
+        candidate = line.strip().strip("|").strip()
+        if not candidate or candidate.startswith("---"):
+            continue
+        candidate = candidate.split("|", 1)[0].strip()
+        candidate = re.split(r"\s+Posted in\s+", candidate, maxsplit=1)[0].strip()
+        if contains_series_name(candidate, series_name) and contains_exact_episode(
+            candidate, episode
+        ):
+            return candidate
+    return None
+
+
 def check_episode(series_name: str, episode: str) -> str | None:
     """Return the first exact EXTTO title for an episode, if it exists."""
     last_error: requests.RequestException | None = None
-    for endpoint in EXTTO_SEARCH_URLS:
+    for endpoint in (*EXTTO_SEARCH_URLS, *EXTTO_PROXY_SEARCH_URLS):
         try:
             response = requests.get(
                 endpoint,
@@ -113,7 +138,10 @@ def check_episode(series_name: str, episode: str) -> str | None:
             last_error = error
             continue
 
-        title = find_first_valid_title(response.text, series_name, episode)
+        if endpoint in EXTTO_PROXY_SEARCH_URLS:
+            title = find_first_valid_markdown_title(response.text, series_name, episode)
+        else:
+            title = find_first_valid_title(response.text, series_name, episode)
         if title is not None:
             return title
 

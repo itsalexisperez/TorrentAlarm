@@ -53,7 +53,33 @@ class EXTTOTests(unittest.TestCase):
         self.assertEqual(result, expected)
         self.assertEqual(
             [call.args[0] for call in get.call_args_list],
-            ["https://ext.to/browse/", "https://extto.com/browse/"],
+            ["https://ext.to/browse/", "https://t.extto.com/browse/"],
+        )
+
+    def test_proxy_markdown_is_used_after_direct_mirrors_fail(self) -> None:
+        expected = "Drag Race Espana S06E02 1080p WEB-DL"
+        markdown = f"{expected} Posted in TV - Episodes HD | Size 1 GB | Seeds 1"
+        with patch.object(
+            check_extto.requests,
+            "get",
+            side_effect=[
+                FakeResponse(status_code=403),
+                FakeResponse(status_code=403),
+                FakeResponse(status_code=403),
+                FakeResponse(markdown),
+            ],
+        ) as get:
+            result = check_extto.check_episode("Drag Race España", "S06E02")
+
+        self.assertEqual(result, expected)
+        self.assertEqual(
+            [call.args[0] for call in get.call_args_list],
+            [
+                "https://ext.to/browse/",
+                "https://t.extto.com/browse/",
+                "https://extto.com/browse/",
+                "https://r.jina.ai/http://ext.to/browse/",
+            ],
         )
 
 

@@ -48,6 +48,13 @@
       "season": 4,
       "enabled": true,
       "release_offset_minutes": 0
+    },
+    {
+      "show_id": 76568,
+      "name": "Sheriff Country",
+      "season": 2,
+      "enabled": true,
+      "release_offset_minutes": 0
     }
   ]
 }

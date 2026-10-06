@@ -37,7 +37,7 @@
   },
   "scheduler": {
     "mode": "ACTIVE_POLL",
-    "fingerprint": "71c97f68bba82cf00ec6f2a15ee55ad7397201cd353cfd1366837fd459d4b888",
+    "fingerprint": "769c424039dbf044fac9b565edff2faba313a51f1707b32a833eb0aea6e662a2",
     "next_wake": null,
     "target": {
       "enabled": true,
@@ -72,7 +72,7 @@
         ]
       }
     },
-    "applied_at": "2026-10-06T02:01:37.641656+00:00"
+    "applied_at": "2026-10-06T04:18:56.864414+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

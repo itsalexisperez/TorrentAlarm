@@ -27,6 +27,20 @@
       "season": 6,
       "enabled": true,
       "release_offset_minutes": 0
+    },
+    {
+      "show_id": 61704,
+      "name": "Reasonable Doubt",
+      "season": 4,
+      "enabled": true,
+      "release_offset_minutes": 0
+    },
+    {
+      "show_id": 82211,
+      "name": "CIA",
+      "season": 2,
+      "enabled": true,
+      "release_offset_minutes": 0
     }
   ]
 }

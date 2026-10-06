@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import re
 import sys
+import unicodedata
 
 import requests
 from bs4 import BeautifulSoup
 
 
 EXTTO_SEARCH_URL = "https://extto.com/browse/"
+EXTTO_SEARCH_URLS = ("https://ext.to/browse/", EXTTO_SEARCH_URL)
 REQUEST_TIMEOUT = 20
 USER_AGENT = "TorrentAlarm/0.1 (read-only episode availability checker)"
 
@@ -28,6 +30,11 @@ EPISODE_RANGE_RE = re.compile(
 
 def normalize_name(value: str) -> str:
     """Normalize name separators so dots, spaces, hyphens and underscores match."""
+    value = "".join(
+        character
+        for character in unicodedata.normalize("NFKD", value)
+        if not unicodedata.combining(character)
+    )
     value = value.casefold()
     value = re.sub(r"[._-]+", " ", value)
     value = re.sub(r"[^\w]+", " ", value, flags=re.UNICODE)
@@ -92,14 +99,27 @@ def find_first_valid_title(html: str, series_name: str, episode: str) -> str | N
 
 def check_episode(series_name: str, episode: str) -> str | None:
     """Return the first exact EXTTO title for an episode, if it exists."""
-    response = requests.get(
-        EXTTO_SEARCH_URL,
-        params={"q": f"{series_name} {episode}"},
-        headers={"User-Agent": USER_AGENT},
-        timeout=REQUEST_TIMEOUT,
-    )
-    response.raise_for_status()
-    return find_first_valid_title(response.text, series_name, episode)
+    last_error: requests.RequestException | None = None
+    for endpoint in EXTTO_SEARCH_URLS:
+        try:
+            response = requests.get(
+                endpoint,
+                params={"q": f"{series_name} {episode}"},
+                headers={"User-Agent": USER_AGENT},
+                timeout=REQUEST_TIMEOUT,
+            )
+            response.raise_for_status()
+        except requests.RequestException as error:
+            last_error = error
+            continue
+
+        title = find_first_valid_title(response.text, series_name, episode)
+        if title is not None:
+            return title
+
+    if last_error is not None:
+        raise last_error
+    return None
 
 
 def main() -> int:

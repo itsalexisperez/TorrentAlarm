@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 from typing import Any
+import unicodedata
 
 import requests
 
@@ -38,6 +39,11 @@ class EZTVError(RuntimeError):
 
 
 def _normalize_name(value: str) -> list[str]:
+    value = "".join(
+        character
+        for character in unicodedata.normalize("NFKD", value)
+        if not unicodedata.combining(character)
+    )
     value = value.casefold()
     value = re.sub(r"[._-]+", " ", value)
     value = re.sub(r"[^\w]+", " ", value, flags=re.UNICODE)

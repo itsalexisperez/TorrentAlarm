@@ -38,6 +38,21 @@ def torrent(title: str, season: int = 1, episode: int = 6) -> dict[str, object]:
 
 
 class EZTVTests(unittest.TestCase):
+    def test_accent_insensitive_title_match(self) -> None:
+        expected = "Drag Race Espana S06E02 1080p WEB-DL EZTV"
+        with patch.object(
+            check_eztv.requests,
+            "get",
+            return_value=response_for(
+                torrent(expected, season=6, episode=2), imdb_id="14148898"
+            ),
+        ):
+            result = check_eztv.check_episode(
+                "Drag Race España", "S06E02", "14148898"
+            )
+
+        self.assertEqual(result, expected)
+
     def test_exact_episode_is_found(self) -> None:
         expected = "The Shards S01E06 1080p WEB-DL EZTV"
         with patch.object(

@@ -45,6 +45,13 @@
       "notified": {
         "S02E01": true
       }
+    },
+    "63192": {
+      "season": 4,
+      "completed": false,
+      "notified": {
+        "S04E01": true
+      }
     }
   },
   "scheduler": {

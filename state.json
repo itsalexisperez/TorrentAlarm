@@ -37,7 +37,11 @@
     "61704": {
       "season": 4,
       "completed": false,
-      "notified": {}
+      "notified": {
+        "S04E01": true,
+        "S04E02": true,
+        "S04E03": true
+      }
     },
     "82211": {
       "season": 2,
@@ -61,13 +65,13 @@
   },
   "scheduler": {
     "mode": "ACTIVE_POLL",
-    "fingerprint": "3438dec291c6255682ba6dfbb8164f913a7aa9c9d8ffebac2d142193f6a2d16b",
+    "fingerprint": "ab25d357436cb82f2500ed85c57348f74cd3271a1e4ca2eeba5103a4066c9eec",
     "next_wake": null,
     "target": {
       "enabled": true,
       "schedule": {
         "timezone": "UTC",
-        "expiresAt": 20261008021500,
+        "expiresAt": 20261008161500,
         "hours": [
           -1
         ],
@@ -96,7 +100,7 @@
         ]
       }
     },
-    "applied_at": "2026-10-06T05:47:49.936545+00:00"
+    "applied_at": "2026-10-06T16:02:01.262825+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

@@ -18,7 +18,8 @@
         "S04E06": true,
         "S04E07": true,
         "S04E08": true,
-        "S04E09": true
+        "S04E09": true,
+        "S04E10": true
       }
     },
     "90632": {
@@ -65,18 +66,18 @@
   },
   "scheduler": {
     "mode": "NEXT_WAKE",
-    "fingerprint": "2b0d91cafdefcaadae6df8dcf34ddf47f929c2fbe5182f96eec4be75019533cb",
-    "next_wake": "2026-10-07T01:00:00+00:00",
+    "fingerprint": "988b23a50cc42a9172ebd3c4f362c68b48e282587258fddd6152709345d125db",
+    "next_wake": "2026-10-10T00:00:00+00:00",
     "target": {
       "enabled": true,
       "schedule": {
         "timezone": "UTC",
-        "expiresAt": 20261007131500,
+        "expiresAt": 20261010121500,
         "hours": [
-          1
+          0
         ],
         "mdays": [
-          7
+          10
         ],
         "minutes": [
           0,
@@ -100,7 +101,7 @@
         ]
       }
     },
-    "applied_at": "2026-10-06T18:01:39.645992+00:00"
+    "applied_at": "2026-10-07T01:01:46.317101+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

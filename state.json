@@ -12,7 +12,7 @@
     },
     "44458": {
       "season": 4,
-      "completed": false,
+      "completed": true,
       "notified": {
         "S04E05": true,
         "S04E06": true,
@@ -61,23 +61,25 @@
     "76568": {
       "season": 2,
       "completed": false,
-      "notified": {}
+      "notified": {
+        "S02E01": true
+      }
     }
   },
   "scheduler": {
     "mode": "NEXT_WAKE",
-    "fingerprint": "988b23a50cc42a9172ebd3c4f362c68b48e282587258fddd6152709345d125db",
-    "next_wake": "2026-10-10T00:00:00+00:00",
+    "fingerprint": "74110f5fa401be09c3d759b17d92f7cb45945527a6579659a691227d7c02c56a",
+    "next_wake": "2026-10-11T18:00:00+00:00",
     "target": {
       "enabled": true,
       "schedule": {
         "timezone": "UTC",
-        "expiresAt": 20261010121500,
+        "expiresAt": 20261012061500,
         "hours": [
-          0
+          18
         ],
         "mdays": [
-          10
+          11
         ],
         "minutes": [
           0,
@@ -101,7 +103,7 @@
         ]
       }
     },
-    "applied_at": "2026-10-07T01:01:46.317101+00:00"
+    "applied_at": "2026-10-10T00:01:33.797913+00:00"
   },
   "scheduler_preflight": {
     "job_id": "8335122",

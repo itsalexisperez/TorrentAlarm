@@ -4,56 +4,56 @@
       "show_id": 68193,
       "name": "The Shards",
       "season": 1,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     },
     {
       "show_id": 44458,
       "name": "Ted Lasso",
       "season": 4,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": -660
     },
     {
       "show_id": 90632,
       "name": "Line of Fire",
       "season": 1,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     },
     {
       "show_id": 51945,
       "name": "Drag Race España",
       "season": 6,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     },
     {
       "show_id": 61704,
       "name": "Reasonable Doubt",
       "season": 4,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     },
     {
       "show_id": 82211,
       "name": "CIA",
       "season": 2,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     },
     {
       "show_id": 63192,
       "name": "Tracker",
       "season": 4,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     },
     {
       "show_id": 76568,
       "name": "Sheriff Country",
       "season": 2,
-      "enabled": true,
+      "enabled": false,
       "release_offset_minutes": 0
     }
   ]

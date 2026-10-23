@@ -1,0 +1,7 @@
+{
+  "package": "TorrentAlarm_Release_Offset_Codex_Plan",
+  "master_prompt": "00_MASTER_ORCHESTRATOR.md",
+  "goal": "Add generic per-show release_offset_minutes and set Ted Lasso season 4 to -660 minutes",
+  "project_path": "/home/alexisperez/Documents/codex-proyectos/TorrentAlarm/",
+  "expected_ted_lasso_effective_time": "2026-09-02T01:00:00Z when TVMaze is 2026-09-02T12:00:00Z"
+}
